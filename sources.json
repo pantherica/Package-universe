@@ -1,0 +1,94 @@
+{
+  "_comment": "Package Universe — Central source config. Add/remove distros here without touching the Python script.",
+
+  "distros": {
+
+    "ubuntu": {
+      "enabled": true,
+      "label": "Ubuntu",
+      "color": "#f59e0b",
+      "cve_url":     "https://ubuntu.com/security/cves/{CVE}.json",
+      "package_url": "https://ubuntu.com/security/cves.json?package={PKG}&limit=50",
+      "releases": [
+        ["questing", "25.10 Questing"],
+        ["noble",    "24.04 LTS Noble"],
+        ["jammy",    "22.04 LTS Jammy"],
+        ["focal",    "20.04 LTS Focal"],
+        ["bionic",   "18.04 LTS Bionic"],
+        ["xenial",   "16.04 LTS Xenial"],
+        ["trusty",   "14.04 LTS Trusty"]
+      ],
+      "eol_statuses": ["end-of-life", "eol", "dne", "ignored", "deferred"]
+    },
+
+    "debian": {
+      "enabled": true,
+      "label": "Debian",
+      "color": "#a78bfa",
+      "cve_url":     "https://security-tracker.debian.org/tracker/{CVE}/json",
+      "package_url": "https://security-tracker.debian.org/tracker/source-package/{PKG}/json",
+      "releases": [
+        ["sid",      "(unstable)"],
+        ["forky",    "forky"],
+        ["trixie",   "trixie"],
+        ["bookworm", "bookworm"],
+        ["bullseye", "bullseye"],
+        ["buster",   "buster"]
+      ],
+      "security_pocket_releases": ["bookworm", "bullseye", "buster"]
+    },
+
+    "rhel": {
+      "enabled": true,
+      "label": "Red Hat / RHEL",
+      "color": "#ef4444",
+      "cve_url":     "https://access.redhat.com/hydra/rest/securitydata/cve/{CVE}.json",
+      "package_url": "https://access.redhat.com/hydra/rest/securitydata/cve.json?package={PKG}&per_page=50",
+      "products": {
+        "Red Hat Enterprise Linux 10": "RHEL 10",
+        "Red Hat Enterprise Linux 9":  "RHEL 9",
+        "Red Hat Enterprise Linux 8":  "RHEL 8",
+        "Red Hat Enterprise Linux 7":  "RHEL 7",
+        "Red Hat Enterprise Linux 6":  "RHEL 6",
+        "Red Hat Enterprise Linux 5":  "RHEL 5",
+        "Fedora": "Fedora"
+      }
+    },
+
+    "arch": {
+      "enabled": true,
+      "label": "Arch Linux",
+      "color": "#17a2b8",
+      "cve_url":     "https://security.archlinux.org/{CVE}.json",
+      "package_url": "https://security.archlinux.org/package/{PKG}.json"
+    },
+
+    "alpine": {
+      "enabled": true,
+      "label": "Alpine Linux",
+      "color": "#22c55e",
+      "cve_url":     "https://security.alpinelinux.org/vuln/{CVE}.json",
+      "package_url": "https://security.alpinelinux.org/search?query={PKG}&return=json",
+      "branches": ["edge", "v3.21", "v3.20", "v3.19", "v3.18", "v3.17", "v3.16", "v3.15"]
+    }
+
+  },
+
+  "meta_sources": {
+    "mitre": {
+      "enabled": true,
+      "cve_url": "https://cveawg.mitre.org/api/cve/{CVE}"
+    },
+    "nvd": {
+      "enabled": true,
+      "cve_url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={CVE}"
+    }
+  },
+
+  "output": {
+    "data_file": "data.json",
+    "cache_dir":  "/tmp/pkg_universe_cache",
+    "cache_ttl_hours": 6,
+    "request_timeout_seconds": 20
+  }
+}
