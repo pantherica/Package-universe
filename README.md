@@ -40,7 +40,7 @@ A command-line tool that queries **MITRE**, **NVD**, **Ubuntu Security**, and th
 ## Overview
 
 ```
-python3 v8_vul_update.py --cve CVE-2023-44487
+python3 Script.py --cve CVE-2023-44487
 ```
 
 The tool fetches data from four independent sources, merges them into a single normalised report, and writes two output files — a JSON data file and an HTML visual report — into a directory named `CVE-YYYY-XXXXX/`.
@@ -144,7 +144,7 @@ cd <your-repo>
 pip install -r requirements.txt
 
 # 3. Run
-python3 v8_vul_update.py --cve CVE-2023-44487
+python3 Script.py --cve CVE-2023-44487
 ```
 
 ---
@@ -154,7 +154,7 @@ python3 v8_vul_update.py --cve CVE-2023-44487
 ### Basic Usage
 
 ```bash
-python3 v8_vul_update.py --cve <CVE-ID>
+python3 Script.py --cve <CVE-ID>
 ```
 
 Scans **all** Ubuntu releases and **all** Debian releases by default.
@@ -170,13 +170,13 @@ Scans **all** Ubuntu releases and **all** Debian releases by default.
 ### Scan a specific Ubuntu release only
 
 ```bash
-python3 v8_vul_update.py --cve CVE-2023-44487 --ubuntu-release focal
+python3 Script.py --cve CVE-2023-44487 --ubuntu-release focal
 ```
 
 ### Scan a specific Debian release only
 
 ```bash
-python3 v8_vul_update.py --cve CVE-2023-44487 --debian-release bookworm
+python3 Script.py --cve CVE-2023-44487 --debian-release bookworm
 ```
 
 ---
@@ -223,7 +223,7 @@ When no `--debian-release` is specified, the tool checks all of the following re
 ### Example 1 — Scan all distros (default)
 
 ```bash
-python3 v8_vul_update.py --cve CVE-2023-44487
+python3 Script.py --cve CVE-2023-44487
 ```
 
 Terminal output:
@@ -293,7 +293,7 @@ Description:   The HTTP/2 protocol allows a denial of service (server resource
 ### Example 2 — Target a single Ubuntu release
 
 ```bash
-python3 v8_vul_update.py --cve CVE-2023-44487 --ubuntu-release noble
+python3 Script.py --cve CVE-2023-44487 --ubuntu-release noble
 ```
 
 Only the `noble` (24.04 LTS) row is shown in the Ubuntu section. All other releases are skipped. The Debian section still checks all releases unless `--debian-release` is also specified.
@@ -303,7 +303,7 @@ Only the `noble` (24.04 LTS) row is shown in the Ubuntu section. All other relea
 ### Example 3 — Target a single Debian release
 
 ```bash
-python3 v8_vul_update.py --cve CVE-2023-44487 --debian-release bookworm
+python3 Script.py --cve CVE-2023-44487 --debian-release bookworm
 ```
 
 Only `bookworm` and its `bookworm (security)` pocket are shown in the Debian section.
@@ -313,7 +313,7 @@ Only `bookworm` and its `bookworm (security)` pocket are shown in the Debian sec
 ### Example 4 — CVE not affecting Ubuntu or Debian
 
 ```bash
-python3 v8_vul_update.py --cve CVE-2024-99999
+python3 Script.py --cve CVE-2024-99999
 ```
 
 If a CVE has no Ubuntu packages and is not in the Debian tracker, both sections display a **Not Affected** banner in the HTML report and `"not_affected": true` in the JSON.
@@ -339,7 +339,7 @@ A table of all Debian releases with package name, fixed version, and status. Sec
 
 ```
 project/
-├── v8_vul_update.py        ← Main scanner script
+├── Script.py        ← Main scanner script
 ├── requirements.txt        ← Python dependencies (requests only)
 ├── README.md               ← This file
 │
