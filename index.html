@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Package Universe — CVE Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0a0c0f;--surface:#111418;--surface2:#181d24;
+  --border:#1e2530;--border2:#2a3340;
+  --text:#e2eaf5;--muted:#5a6a80;
+  --accent:#3b82f6;--accent2:#60a5fa;
+  --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#a78bfa;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(59,130,246,.04) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(59,130,246,.04) 1px,transparent 1px);
+  background-size:40px 40px}
+
+/* ── HEADER ── */
+header{position:relative;z-index:10;padding:3rem 2rem 2rem;text-align:center;border-bottom:1px solid var(--border)}
+.logo-row{display:flex;align-items:center;justify-content:center;gap:.75rem;margin-bottom:1rem}
+.logo-icon{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-text{font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-family:var(--mono)}
+h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:800;letter-spacing:-.03em;line-height:1.1;
+  background:linear-gradient(135deg,#e2eaf5 30%,#3b82f6);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.75rem}
+.subtitle{font-size:14px;color:var(--muted);max-width:520px;margin:0 auto;line-height:1.6;font-family:var(--mono)}
+
+/* ── SEARCH PANEL ── */
+.search-panel{position:relative;z-index:10;max-width:900px;margin:0 auto;padding:2rem 1.5rem}
+.search-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:1.5rem}
+
+/* Mode toggle */
+.mode-toggle{display:flex;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:3px;gap:3px;width:fit-content;margin-bottom:1.25rem}
+.mode-btn{padding:.4rem 1.4rem;border-radius:8px;font-size:12px;font-weight:600;font-family:var(--mono);letter-spacing:.05em;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all .15s}
+.mode-btn.active{background:var(--accent);color:#fff}
+
+/* Input */
+.input-row{display:flex;gap:.75rem;align-items:stretch;flex-wrap:wrap}
+.input-wrap{flex:1;min-width:220px;position:relative}
+.input-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted);pointer-events:none}
+input[type=text]{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;
+  padding:.75rem .75rem .75rem 2.75rem;font-size:14px;font-family:var(--mono);color:var(--text);outline:none;transition:border-color .15s}
+input[type=text]:focus{border-color:var(--accent)}
+input[type=text]::placeholder{color:var(--muted)}
+.scan-btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:.75rem 1.75rem;
+  font-size:13px;font-weight:600;font-family:var(--mono);letter-spacing:.05em;cursor:pointer;
+  transition:background .15s,transform .1s;white-space:nowrap;display:flex;align-items:center;gap:.5rem}
+.scan-btn:hover{background:#2563eb}
+.scan-btn:active{transform:scale(.98)}
+.scan-btn:disabled{background:var(--border2);color:var(--muted);cursor:not-allowed}
+
+/* Distro filter */
+.filter-label{font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin:.75rem 0 .5rem;display:flex;align-items:center;gap:.5rem}
+.filter-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.distro-grid{display:flex;gap:.5rem;flex-wrap:wrap}
+.dtab{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:.35rem .85rem;
+  font-size:12px;font-family:var(--mono);color:var(--muted);cursor:pointer;transition:all .15s;
+  user-select:none;display:flex;align-items:center;gap:.4rem}
+.dtab:hover{border-color:var(--accent);color:var(--accent2)}
+.dtab.active{background:rgba(59,130,246,.12);border-color:var(--accent);color:var(--accent2)}
+.dtab-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* Spinner */
+.spinner-wrap{display:none;padding:3rem;text-align:center}
+.spinner-wrap.on{display:block}
+.spinner{width:36px;height:36px;border:2px solid var(--border2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-text{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+/* ── RESULTS ── */
+#results{position:relative;z-index:10;max-width:1100px;margin:0 auto;padding:0 1.5rem 4rem}
+
+/* ── CARDS ── */
+.overview-card,.distro-block{background:var(--surface);border:1px solid var(--border2);
+  border-radius:14px;overflow:hidden;margin-bottom:1.5rem}
+.overview-head,.distro-head{padding:1rem 1.5rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.cve-title{font-size:1.4rem;font-weight:700;font-family:var(--mono);color:var(--text);letter-spacing:-.02em}
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.meta-cell{padding:.85rem 1.25rem;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.meta-cell:last-child{border-right:none}
+.meta-key{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem}
+.meta-val{font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text)}
+.desc-block{padding:1.25rem 1.5rem;border-top:1px solid var(--border)}
+.desc-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem}
+.desc-text{font-size:13px;color:#b0bec5;line-height:1.8;border-left:3px solid var(--accent);padding-left:1rem}
+.cwe-row{padding:.65rem 1.5rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;border-top:1px solid var(--border)}
+.cwe-pill{font-size:11px;font-family:var(--mono);background:rgba(167,139,250,.12);color:var(--purple);
+  border:1px solid rgba(167,139,250,.3);border-radius:4px;padding:2px 8px}
+.refs-block{padding:.65rem 1.5rem;border-top:1px solid var(--border)}
+.ref-link{display:block;font-size:11px;font-family:var(--mono);color:var(--accent2);word-break:break-all;
+  padding:3px 0;text-decoration:none;opacity:.8}
+.ref-link:hover{opacity:1;text-decoration:underline}
+
+/* Distro head */
+.distro-logo{font-size:11px;font-weight:700;font-family:var(--mono);padding:.25rem .75rem;border-radius:6px}
+.distro-title{font-size:13px;font-weight:600;color:var(--text)}
+.dist-meta{font-size:11px;font-family:var(--mono);color:var(--muted);margin-left:auto}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:.55rem 1rem;font-family:var(--mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:.6rem 1rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(59,130,246,.03)}
+code{font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:4px;color:#79c0ff}
+.not-in{color:var(--muted);font-style:italic;font-size:11px}
+.unfixed{color:var(--amber);font-family:var(--mono);font-size:11px}
+.eol-row td{background:rgba(251,146,60,.04)}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;
+  font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.sev-CRITICAL{background:#fca5a5;color:#7f1d1d}
+.sev-HIGH    {background:#fdba74;color:#7c2d12}
+.sev-MEDIUM  {background:#fcd34d;color:#713f12}
+.sev-LOW     {background:#86efac;color:#14532d}
+.sev-UNKNOWN {background:#93c5fd;color:#1e3a5f}
+.st-fixed,.st-resolved,.st-released{background:#bbf7d0;color:#14532d}
+.st-open,.st-vulnerable,.st-affected{background:#fde68a;color:#7c2d12}
+.st-notaffected{background:#d1fae5;color:#065f46}
+.st-triage{background:#bae6fd;color:#0c4a6e}
+.st-eol{background:#431407;color:#fb923c;border:1px solid #9a3412}
+.st-willnotfix,.st-ignored{background:#1f2937;color:#6b7280}
+.st-default{background:#374151;color:#9ca3af}
+
+/* Not-affected banner */
+.na-banner{display:flex;align-items:center;gap:1rem;padding:1.25rem 1.5rem}
+.na-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* Error */
+.error-banner{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);
+  border-left:4px solid var(--red);border-radius:8px;padding:1rem 1.25rem;
+  font-size:12px;font-family:var(--mono);color:#fca5a5;margin-bottom:1rem}
+
+/* Package CVE list */
+.pkg-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;
+  border-bottom:1px solid var(--border);flex-wrap:wrap}
+.pkg-row:last-child{border-bottom:none}
+.pkg-row:hover{background:rgba(59,130,246,.03);cursor:pointer}
+.cve-link{font-family:var(--mono);font-size:13px;color:var(--accent2);text-decoration:none;font-weight:600}
+.cve-link:hover{text-decoration:underline}
+.cve-desc{font-size:12px;color:var(--muted);flex:1;min-width:180px}
+.rescan-btn{font-size:11px;font-family:var(--mono);background:transparent;
+  border:1px solid var(--border2);border-radius:6px;padding:.25rem .65rem;
+  color:var(--accent2);cursor:pointer;white-space:nowrap;transition:border-color .15s}
+.rescan-btn:hover{border-color:var(--accent)}
+
+/* Empty */
+.empty{text-align:center;padding:4rem 2rem;font-family:var(--mono);font-size:13px;color:var(--muted);line-height:2}
+
+/* Footer */
+footer{position:relative;z-index:10;border-top:1px solid var(--border);padding:1.5rem 2rem;
+  text-align:center;font-size:11px;font-family:var(--mono);color:var(--muted)}
+footer a{color:var(--accent2);text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+@media(max-width:600px){.input-row{flex-direction:column}.scan-btn{width:100%;justify-content:center}h1{font-size:2rem}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-row">
+    <div class="logo-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 2L3 6v8l7 4 7-4V6L10 2z" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M10 2v12M3 6l7 4 7-4" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="logo-text">Package Universe</span>
+  </div>
+  <h1>CVE Scanner</h1>
+  <p class="subtitle">Search CVEs or packages across Ubuntu, Debian, Red Hat, Arch &amp; Alpine.</p>
+</header>
+
+<div class="search-panel">
+  <div class="search-box">
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-cve"     onclick="setMode('cve')">CVE</button>
+      <button class="mode-btn"        id="btn-package" onclick="setMode('package')">Package</button>
+    </div>
+
+    <!-- Search input -->
+    <div class="input-row">
+      <div class="input-wrap">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="CVE-2023-44487" autocomplete="off" spellcheck="false"/>
+      </div>
+      <button class="scan-btn" id="scan-btn" onclick="doScan()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M8 2v4M8 10v4M2 8h4M10 8h4" stroke-linecap="round"/><circle cx="8" cy="8" r="2.5"/>
+        </svg>
+        Scan
+      </button>
+    </div>
+
+    <!-- Distro filter -->
+    <div class="filter-label">Distro filter <span style="font-weight:400;opacity:.6;margin-left:.3rem">(optional)</span></div>
+    <div class="distro-grid" id="distro-tabs">
+      <div class="dtab active" id="tab-all" onclick="toggleDistro('all')">
+        <span class="dtab-dot" style="background:var(--accent)"></span>All
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Spinner -->
+  <div class="spinner-wrap" id="spinner">
+    <div class="spinner"></div>
+    <div class="spin-text" id="spin-text">Scanning…</div>
+  </div>
+</div>
+
+<div id="results">
+  <div class="empty">
+    Enter a CVE ID or package name above and hit <strong style="color:var(--text)">Scan</strong>.<br>
+    Make sure <code>server.py</code> is running: &nbsp;<code>python3 server.py</code>
+  </div>
+</div>
+
+<footer>
+  Package Universe &nbsp;·&nbsp;
+  <a href="https://cveawg.mitre.org" target="_blank">MITRE</a> /
+  <a href="https://nvd.nist.gov" target="_blank">NVD</a> /
+  <a href="https://ubuntu.com/security/cves" target="_blank">Ubuntu</a> /
+  <a href="https://security-tracker.debian.org" target="_blank">Debian</a> /
+  <a href="https://access.redhat.com/security/security-updates/" target="_blank">Red Hat</a> /
+  <a href="https://security.archlinux.org" target="_blank">Arch</a> /
+  <a href="https://security.alpinelinux.org" target="_blank">Alpine</a>
+</footer>
+
+<script>
+const API = 'http://localhost:5000/api';
+
+let MODE         = 'cve';
+let ACTIVE_DIST  = new Set();
+let ALL_DIST     = [];
+let DIST_CONFIG  = {};
+
+// ── Init: load distro config from backend ─────────────────
+async function init() {
+  try {
+    const r = await fetch(`${API}/sources`);
+    if (!r.ok) throw new Error();
+    DIST_CONFIG = await r.json();
+    ALL_DIST    = Object.keys(DIST_CONFIG);
+    ACTIVE_DIST = new Set(ALL_DIST);
+    buildDistroTabs();
+  } catch {
+    // server not running yet — show static defaults
+    const defaults = {ubuntu:{label:'Ubuntu',color:'#f59e0b'},debian:{label:'Debian',color:'#a78bfa'},
+      rhel:{label:'Red Hat',color:'#ef4444'},arch:{label:'Arch Linux',color:'#17a2b8'},alpine:{label:'Alpine',color:'#22c55e'}};
+    DIST_CONFIG = defaults;
+    ALL_DIST    = Object.keys(defaults);
+    ACTIVE_DIST = new Set(ALL_DIST);
+    buildDistroTabs();
+  }
+}
+
+// ── Distro tabs ───────────────────────────────────────────
+function buildDistroTabs() {
+  const container = document.getElementById('distro-tabs');
+  container.innerHTML = `<div class="dtab active" id="tab-all" onclick="toggleDistro('all')"><span class="dtab-dot" style="background:var(--accent)"></span>All</div>`;
+  ALL_DIST.forEach(key => {
+    const cfg = DIST_CONFIG[key], color = cfg.color || '#60a5fa';
+    const tab = document.createElement('div');
+    tab.className = 'dtab active'; tab.id = `tab-${key}`;
+    tab.innerHTML = `<span class="dtab-dot" style="background:${color}"></span>${cfg.label}`;
+    tab.onclick = () => toggleDistro(key);
+    container.appendChild(tab);
+  });
+}
+
+function toggleDistro(d) {
+  if (d === 'all') {
+    ACTIVE_DIST = new Set(ALL_DIST);
+    document.querySelectorAll('.dtab').forEach(e => e.classList.add('active'));
+    return;
+  }
+  document.getElementById('tab-all').classList.remove('active');
+  const tab = document.getElementById(`tab-${d}`);
+  if (ACTIVE_DIST.has(d)) {
+    ACTIVE_DIST.delete(d); tab.classList.remove('active');
+    if (!ACTIVE_DIST.size) { ACTIVE_DIST = new Set(ALL_DIST); document.querySelectorAll('.dtab').forEach(e => e.classList.add('active')); }
+  } else {
+    ACTIVE_DIST.add(d); tab.classList.add('active');
+  }
+}
+
+// ── Mode toggle ───────────────────────────────────────────
+function setMode(m) {
+  MODE = m;
+  document.getElementById('btn-cve').classList.toggle('active', m === 'cve');
+  document.getElementById('btn-package').classList.toggle('active', m === 'package');
+  const input = document.getElementById('search-input');
+  input.placeholder = m === 'cve' ? 'CVE-2023-44487' : 'nghttp2';
+  input.value = '';
+  document.getElementById('results').innerHTML = '';
+}
+
+// ── Helpers ───────────────────────────────────────────────
+const isEol = s => {
+  if (!s) return false; s = s.toLowerCase();
+  return ['end-of-life','eol','dne','ignored','deferred'].includes(s) || s.includes('end-of-life');
+};
+function stClass(s) {
+  if (!s) return 'st-default';
+  const sl = s.toLowerCase().replace(/[-_ ]/g,'');
+  if (['resolved','released','fixed'].some(x=>sl.includes(x))) return 'st-fixed';
+  if (sl==='notaffected'||sl.includes('notaffect')) return 'st-notaffected';
+  if (sl==='willnotfix') return 'st-willnotfix';
+  if (['open','unfixed','vulnerable','affected'].some(x=>sl.includes(x))) return 'st-open';
+  if (sl.includes('triage')||sl==='testing') return 'st-triage';
+  if (isEol(s)) return 'st-eol';
+  return 'st-default';
+}
+const bdg   = (t,c) => `<span class="badge ${c}">${t}</span>`;
+const stBdg = st => bdg(st||'unknown', stClass(st));
+function sevBdg(sev) {
+  sev = (sev||'UNKNOWN').toUpperCase();
+  if (sev==='IMPORTANT') sev='HIGH'; if (sev==='MODERATE') sev='MEDIUM';
+  if (!['CRITICAL','HIGH','MEDIUM','LOW'].includes(sev)) sev='UNKNOWN';
+  return bdg(sev,'sev-'+sev);
+}
+function naBanner(label, color) {
+  return `<div class="na-banner">
+    <div class="na-icon" style="background:${color}22">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="8" stroke="${color}" stroke-width="1.5"/>
+        <path d="M6 10l3 3 5-5" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:${color};margin-bottom:2px">Not Affected — ${label}</div>
+      <div style="font-size:12px;font-family:var(--mono);color:var(--muted)">Not found in the ${label} security tracker.</div>
+    </div>
+  </div>`;
+}
+function distroHead(label, color, meta, extra='') {
+  return `<div class="distro-head">
+    <span class="distro-logo" style="background:${color}22;color:${color}">${label}</span>
+    <span class="distro-title">${label} Analysis</span>${extra}
+    <span class="dist-meta">${meta}</span>
+  </div>`;
+}
+
+// ── Scan ─────────────────────────────────────────────────
+async function doScan(overrideQuery, overrideMode) {
+  const query = (overrideQuery || document.getElementById('search-input').value.trim());
+  const mode  = overrideMode || MODE;
+  if (!query) return;
+
+  document.getElementById('scan-btn').disabled = true;
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('spinner').classList.add('on');
+  document.getElementById('spin-text').textContent = mode === 'cve' ? `Scanning ${query}…` : `Searching for package "${query}"…`;
+
+  const distroParam = [...ACTIVE_DIST].join(',');
+  const url = `${API}/scan?mode=${mode}&q=${encodeURIComponent(query)}&distros=${distroParam}`;
+
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({error:'Server error'}));
+      throw new Error(err.error || `HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    document.getElementById('spinner').classList.remove('on');
+    document.getElementById('results').innerHTML = data.mode === 'cve' ? renderCve(data) : renderPackage(data);
+  } catch (e) {
+    document.getElementById('spinner').classList.remove('on');
+    document.getElementById('results').innerHTML = `
+      <div class="error-banner" style="max-width:900px;margin:0 auto">
+        <strong>Error:</strong> ${e.message}<br>
+        <span style="opacity:.7">Make sure <code>server.py</code> is running: <code>python3 server.py</code></span>
+      </div>`;
+  }
+  document.getElementById('scan-btn').disabled = false;
+}
+
+// ── CVE render ───────────────────────────────────────────
+function renderCve(data) {
+  let html = `<div style="max-width:1100px;margin:0 auto">`;
+  html += overviewHtml(data.overview || {}, data.query);
+  for (const key of (data.distros_used || [])) {
+    if (!ACTIVE_DIST.has(key)) continue;
+    const d = data.distros[key]; if (!d) continue;
+    const cfg = data.sources_config[key] || {}, color = cfg.color||'#60a5fa', label = cfg.label||key;
+    if (key==='ubuntu')      html += ubuntuHtml(d, label, color);
+    else if (key==='debian') html += debianHtml(d, label, color);
+    else if (key==='rhel')   html += rhelHtml(d, label, color);
+    else if (key==='arch')   html += archHtml(d, label, color);
+    else if (key==='alpine') html += alpineHtml(d, label, color);
+  }
+  return html + `</div>`;
+}
+
+// ── Package render ───────────────────────────────────────
+function renderPackage(data) {
+  let html = `<div style="max-width:1100px;margin:0 auto">
+    <div class="overview-card">
+      <div class="overview-head">
+        <span class="cve-title">${data.query}</span>
+        <span class="badge" style="background:rgba(59,130,246,.15);color:var(--accent2)">Package Search</span>
+        <span style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--muted)">${(data.generated_at||'').slice(0,19).replace('T',' ')} UTC</span>
+      </div>
+      <div class="desc-block">
+        <div class="desc-label">Results</div>
+        <div class="desc-text">CVEs affecting <strong style="color:var(--text)">${data.query}</strong> across all checked distros. Click any CVE ID to run a full scan.</div>
+      </div>
+    </div>`;
+
+  for (const key of (data.distros_used||[])) {
+    if (!ACTIVE_DIST.has(key)) continue;
+    const d = data.distros[key]; if (!d) continue;
+    const cfg = data.sources_config[key]||{}, color = cfg.color||'#60a5fa', label = cfg.label||key;
+    const cves = d.cves || [];
+    html += `<div class="distro-block">
+      ${distroHead(label, color, `${cves.length} CVE${cves.length!==1?'s':''}`)}`;
+    if (!cves.length) {
+      html += naBanner(label, color);
+    } else {
+      html += `<div>` + cves.map(c => {
+        const id   = c.id || c.cve || '';
+        const sev  = c.priority || c.severity || c.urgency || '';
+        const desc = (c.description || c.bugzilla_description || '').substring(0,120);
+        return `<div class="pkg-row">
+          <a class="cve-link" href="https://nvd.nist.gov/vuln/detail/${id}" target="_blank">${id}</a>
+          ${sev ? sevBdg(sev) : ''}
+          <span class="cve-desc">${desc ? desc+'…' : ''}</span>
+          <button class="rescan-btn" onclick="doScan('${id}','cve')">Full scan →</button>
+        </div>`;
+      }).join('') + `</div>`;
+    }
+    html += `</div>`;
+  }
+  return html + `</div>`;
+}
+
+// ── Overview HTML ────────────────────────────────────────
+function overviewHtml(ov, cve) {
+  const err  = (ov.errors||[]).length ? `<div class="error-banner">${ov.errors.map(e=>`⚠ ${e}`).join('<br>')}</div>` : '';
+  const pub  = (ov.published||'').slice(0,10)||'—';
+  const mod  = (ov.last_modified||'').slice(0,10)||'—';
+  const cwes = (ov.cwes||[]).map(c=>`<span class="cwe-pill">${c}</span>`).join(' ');
+  const refs = (ov.references||[]).slice(0,10).map(r=>`<a class="ref-link" href="${r.url}" target="_blank">${r.url}</a>`).join('');
+  return `<div class="overview-card">
+    <div class="overview-head">
+      <span class="cve-title">${cve}</span>
+      ${sevBdg(ov.severity)}
+      ${ov.cvss_score?`<span class="badge sev-UNKNOWN">CVSS ${ov.cvss_score}</span>`:''}
+      ${ov.state?`<span class="badge" style="background:#1f2937;color:#8b949e">${ov.state}</span>`:''}
+      <span style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--muted)">Source: ${(ov.sources||[]).join(' / ')||'N/A'}</span>
+    </div>${err}
+    <div class="overview-grid">
+      <div class="meta-cell"><div class="meta-key">Severity</div>${sevBdg(ov.severity)}</div>
+      <div class="meta-cell"><div class="meta-key">CVSS</div><div class="meta-val">${ov.cvss_score||'—'}</div></div>
+      <div class="meta-cell"><div class="meta-key">State</div><div class="meta-val">${ov.state||'—'}</div></div>
+      <div class="meta-cell"><div class="meta-key">Assigner</div><div class="meta-val">${ov.assigner||'—'}</div></div>
+      <div class="meta-cell"><div class="meta-key">Published</div><div class="meta-val" style="font-size:12px">${pub}</div></div>
+      <div class="meta-cell"><div class="meta-key">Modified</div><div class="meta-val" style="font-size:12px">${mod}</div></div>
+    </div>
+    ${ov.cvss_vector?`<div class="desc-block"><div class="desc-label">CVSS Vector</div><code style="background:transparent;color:var(--muted);font-size:11px">${ov.cvss_vector}</code></div>`:''}
+    ${ov.description?`<div class="desc-block"><div class="desc-label">Description</div><div class="desc-text">${ov.description}</div></div>`:''}
+    ${cwes?`<div class="cwe-row"><span style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-right:.3rem">CWE</span>${cwes}</div>`:''}
+    ${refs?`<div class="refs-block"><div class="desc-label">References</div>${refs}</div>`:''}
+  </div>`;
+}
+
+// ── Per-distro HTML ───────────────────────────────────────
+function ubuntuHtml(data, label, color) {
+  const RELS=[["questing","25.10 Questing"],["noble","24.04 LTS Noble"],["jammy","22.04 LTS Jammy"],["focal","20.04 LTS Focal"],["bionic","18.04 LTS Bionic"],["xenial","16.04 LTS Xenial"],["trusty","14.04 LTS Trusty"]];
+  const rl=Object.fromEntries(RELS);
+  const hdr=distroHead(label,color,`${RELS.length} releases`,data.priority?`<span class="badge" style="background:${color}22;color:${color}">${data.priority}</span>`:'');
+  if(data.not_affected) return `<div class="distro-block">${hdr}${naBanner(label,color)}</div>`;
+  let rows='';
+  RELS.forEach(([code])=>{
+    const lbl=rl[code],pkgs=(data.by_release||{})[code]||[];
+    if(pkgs.length){pkgs.forEach((p,i)=>{const eol=isEol(p.status);rows+=`<tr class="${eol?'eol-row':''}">
+      ${i===0?`<td rowspan="${pkgs.length}" style="vertical-align:middle"><span style="font-family:var(--mono);font-size:11px;color:${eol?'#fb923c':'#93c5fd'}">${eol?'⚠ ':''}${lbl}</span></td>`:''}
+      <td><code>${p.name}</code></td><td style="color:var(--muted);font-size:11px">${p.component||'—'}</td>
+      <td>${stBdg(p.status)}</td><td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${p.description||'—'}</td></tr>`;});}
+    else rows+=`<tr><td><span style="font-family:var(--mono);font-size:11px;color:#93c5fd">${lbl}</span></td><td colspan="4"><span class="not-in">Not in release</span></td></tr>`;
+  });
+  return `<div class="distro-block">${hdr}<div class="tbl-wrap"><table><thead><tr><th>Release</th><th>Package</th><th>Component</th><th>Status</th><th>Version / Info</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function debianHtml(data, label, color) {
+  const DRELS=[["sid","(unstable)"],["forky","forky"],["trixie","trixie"],["bookworm","bookworm"],["bullseye","bullseye"],["buster","buster"]];
+  const rl=Object.fromEntries(DRELS),sl={};
+  ["bookworm","bullseye","buster"].forEach(r=>sl[`${r}-security`]=`${r} (security)`);
+  const hdr=distroHead(label,color,`${DRELS.length} releases`);
+  const rows=data.rows||[];
+  if(!rows.length) return `<div class="distro-block">${hdr}${naBanner(label,color)}</div>`;
+  const tr=rows.map(r=>{const lbl=r.release_label,isSec=lbl.endsWith('-security'),disp=sl[lbl]||rl[lbl]||lbl,fv=r.fixed_version||'—';
+    const fc=fv.includes('unfixed')?`<td class="unfixed">${fv}</td>`:fv.includes('not affected')?`<td style="color:var(--green);font-family:var(--mono);font-size:11px">${fv}</td>`:(fv&&fv!=='—'&&!fv.startsWith('('))?`<td><code>${fv}</code></td>`:`<td style="color:var(--muted);font-size:11px">${fv}</td>`;
+    return `<tr><td><code>${r.package}</code></td><td><span style="font-family:var(--mono);font-size:11px;color:${isSec?'#c4b5fd':'#a78bfa'}">${disp}</span></td>${fc}<td>${stBdg(r.status)}</td></tr>`;}).join('');
+  return `<div class="distro-block">${hdr}<div class="tbl-wrap"><table><thead><tr><th>Package</th><th>Release</th><th>Fixed Version</th><th>Status</th></tr></thead><tbody>${tr}</tbody></table></div></div>`;
+}
+
+function rhelHtml(data, label, color) {
+  const hdr=distroHead(label,color,'RHEL 5–10 · Fedora',data.threat_severity?`<span class="badge" style="background:${color}22;color:${color}">${data.threat_severity}</span>`:'');
+  if(data.not_affected) return `<div class="distro-block">${hdr}${naBanner(label,color)}</div>`;
+  const tr=(data.rows||[]).map(r=>{
+    const fc=r.status==='Fixed'&&r.fixed_version&&r.fixed_version!=='—'?`<td><code>${r.fixed_version}</code></td>`:`<td class="unfixed">(unfixed)</td>`;
+    const ac=r.advisory?`<td><a href="https://access.redhat.com/errata/${r.advisory}" target="_blank" class="ref-link" style="font-size:11px">${r.advisory}</a></td>`:`<td style="color:var(--muted);font-size:11px">—</td>`;
+    return `<tr><td><span style="font-family:var(--mono);font-size:11px;color:#fca5a5">${r.product}</span></td><td><code>${r.package}</code></td>${fc}<td>${stBdg(r.status)}</td>${ac}</tr>`;}).join('');
+  return `<div class="distro-block">${hdr}<div class="tbl-wrap"><table><thead><tr><th>Product</th><th>Package</th><th>Fixed Version</th><th>Status</th><th>Advisory</th></tr></thead><tbody>${tr}</tbody></table></div></div>`;
+}
+
+function archHtml(data, label, color) {
+  const hdr=distroHead(label,color,'Rolling release');
+  if(data.not_affected) return `<div class="distro-block">${hdr}${naBanner(label,color)}</div>`;
+  const tr=(data.rows||[]).map(r=>`<tr><td><code>${r.package}</code></td><td>${stBdg(r.status)}</td><td>${sevBdg(r.severity)}</td><td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${r.groups||r.advisory||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--green)">${r.fixed||'—'}</td></tr>`).join('');
+  return `<div class="distro-block">${hdr}<div class="tbl-wrap"><table><thead><tr><th>Package</th><th>Status</th><th>Severity</th><th>AVG Group</th><th>Advisory</th></tr></thead><tbody>${tr}</tbody></table></div></div>`;
+}
+
+function alpineHtml(data, label, color) {
+  const hdr=distroHead(label,color,'edge · v3.15–3.21');
+  if(data.not_affected) return `<div class="distro-block">${hdr}${naBanner(label,color)}</div>`;
+  const tr=(data.rows||[]).map(r=>{const fv=r.fixed_version,fc=fv&&fv!=='(unfixed)'?`<td><code>${fv}</code></td>`:`<td class="unfixed">(unfixed)</td>`;
+    return `<tr><td><code>${r.package}</code></td><td><span style="font-family:var(--mono);font-size:11px;color:#86efac">${r.branch}</span></td>${fc}<td>${stBdg(r.status)}</td></tr>`;}).join('');
+  return `<div class="distro-block">${hdr}<div class="tbl-wrap"><table><thead><tr><th>Package</th><th>Branch</th><th>Fixed Version</th><th>Status</th></tr></thead><tbody>${tr}</tbody></table></div></div>`;
+}
+
+// Enter key
+document.getElementById('search-input').addEventListener('keydown', e => { if(e.key==='Enter') doScan(); });
+init();
+</script>
+</body>
+</html>
